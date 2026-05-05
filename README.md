@@ -85,4 +85,4 @@ Submitted for HeyGen WTD hackathon. Building if accepted.
 
 ## Author
 
-Arindam Ghara
+Ari
