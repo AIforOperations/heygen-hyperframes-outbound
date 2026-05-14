@@ -30,7 +30,10 @@ import { ElevenLabsError, transcribeAudio } from "@/lib/elevenlabs";
  *     skipTranscription?: boolean // for speed during development
  *   }
  */
-export const maxDuration = 800;
+// Hobby plan caps at 300s. HeyGen renders can take 5+ min so this route will
+// time out for full E2E tests in production — it's primarily a local dev tool.
+// Production flow should use webhooks (see /api/heygen/webhook, todo).
+export const maxDuration = 300;
 
 interface RequestBody {
   avatarId: string;

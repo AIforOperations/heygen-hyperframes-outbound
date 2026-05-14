@@ -18,9 +18,10 @@ import { renderInSandbox } from "@/lib/sandbox";
  */
 
 export const runtime = "nodejs";
-// HeyGen render is ~3-7 min; HyperFrames render is ~15-20s. We give ourselves
-// 10 minutes on Pro. (Hobby caps at 60s and this route will not fit there.)
-export const maxDuration = 600;
+// Hobby plan caps Serverless Functions at 300s. A warm sandbox render fits
+// (~150s total). Cold-start renders without a cached snapshot will time out —
+// the snapshot is built at deploy time to avoid that.
+export const maxDuration = 300;
 
 interface RenderRequest {
   compositionDir?: string;
