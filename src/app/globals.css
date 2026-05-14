@@ -1,0 +1,198 @@
+@import "tailwindcss";
+
+:root {
+  --background: #050508;
+  --foreground: #f0f0f5;
+  --muted: #9aa0a6;
+  --primary: #DC2626;
+  --primary-light: #F87171;
+  --secondary: #991B1B;
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-strong: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.18);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-light: var(--primary-light);
+  --color-secondary: var(--secondary);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-border-token: var(--border);
+  --color-border-token-strong: var(--border-strong);
+  --font-sans: var(--font-sora);
+  --font-mono: var(--font-jetbrains);
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+body {
+  font-family: var(--font-sora), "Sora", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-synthesis: none;
+}
+
+p,
+span,
+a,
+li,
+td {
+  font-weight: 400;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #050508;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2a35;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Glass surface used across builder + cards */
+.glass {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.07) 0%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+    inset 1px 0 0 0 rgba(255, 255, 255, 0.03),
+    0 4px 24px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.glass::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 8%;
+  right: 8%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.14),
+    transparent
+  );
+  pointer-events: none;
+}
+
+.glass-hover {
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-hover:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-2px);
+}
+
+/* Hero background glow */
+.hero-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      ellipse 50% 40% at 50% 0%,
+      rgba(220, 38, 38, 0.18),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 80% 60% at 50% 100%,
+      rgba(248, 113, 113, 0.06),
+      transparent 60%
+    );
+  pointer-events: none;
+}
+
+/* Blur reveal */
+@keyframes blurFade {
+  0% {
+    opacity: 0;
+    filter: blur(12px);
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+.blur-in {
+  opacity: 0;
+  animation: blurFade 0.7s ease-out forwards;
+}
+.d-1 { animation-delay: 0.1s; }
+.d-2 { animation-delay: 0.25s; }
+.d-3 { animation-delay: 0.4s; }
+.d-4 { animation-delay: 0.55s; }
+.d-5 { animation-delay: 0.7s; }
+.d-6 { animation-delay: 0.85s; }
+
+/* Pulse used for active pipeline step */
+@keyframes pulseDot {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(220, 38, 38, 0);
+  }
+}
+.pulse-dot {
+  animation: pulseDot 1.6s ease-out infinite;
+}
+
+/* Spin used for active pipeline step icon */
+@keyframes spinRing {
+  to { transform: rotate(360deg); }
+}
+.spin-ring {
+  animation: spinRing 1.1s linear infinite;
+}
+
+/* Progress bar gradient */
+.progress-bar {
+  background: linear-gradient(
+    90deg,
+    var(--primary) 0%,
+    var(--primary-light) 100%
+  );
+  transition: width 0.4s ease;
+}
+
+/* Tag */
+.tag {
+  background: rgba(220, 38, 38, 0.08);
+  color: rgba(248, 113, 113, 0.95);
+  border: 1px solid rgba(220, 38, 38, 0.22);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  font-family: var(--font-jetbrains), "JetBrains Mono", monospace;
+  letter-spacing: 0.02em;
+}

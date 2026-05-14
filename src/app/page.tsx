@@ -1,0 +1,752 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  ArrowRight,
+  Building2,
+  Check,
+  ChevronDown,
+  Cpu,
+  FileText,
+  Loader2,
+  Mail,
+  Play,
+  Search,
+  Sparkles,
+  Video,
+  Wand2,
+} from "lucide-react";
+
+function Linkedin({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M20.452 20.452h-3.554v-5.569c0-1.328-.025-3.037-1.852-3.037-1.853 0-2.136 1.446-2.136 2.94v5.666H9.356V9h3.414v1.561h.046c.476-.9 1.637-1.852 3.37-1.852 3.602 0 4.266 2.37 4.266 5.456v6.287zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.066 2.063 2.063 0 1 1 2.063 2.066zM7.119 20.452H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .771 0 1.726v20.547C0 23.228.792 24 1.771 24h20.451C23.2 24 24 23.228 24 22.273V1.726C24 .771 23.2 0 22.222 0h.003z" />
+    </svg>
+  );
+}
+
+// ---------- Avatar type (loaded from /api/avatars) ----------
+type Avatar = {
+  id: string;
+  label: string;
+  style: string;
+  fallbackColor: string;
+  previewImageUrl: string | null;
+  previewVideoUrl: string | null;
+  defaultVoiceId: string | null;
+  supportedEngines: ("avatar_v" | "avatar_iv")[];
+};
+
+const FALLBACK_AVATAR: Avatar = {
+  id: "ari-fallback",
+  label: "Ari",
+  style: "Founder, AIforOperations",
+  fallbackColor: "#DC2626",
+  previewImageUrl: null,
+  previewVideoUrl: null,
+  defaultVoiceId: null,
+  supportedEngines: ["avatar_v"],
+};
+
+function initialsFromLabel(label: string): string {
+  return label
+    .split(" ")
+    .map((n) => n[0])
+    .filter(Boolean)
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function AvatarThumb({
+  avatar,
+  size = 32,
+}: {
+  avatar: Avatar;
+  size?: number;
+}) {
+  return (
+    <span
+      className="relative flex shrink-0 items-center justify-center overflow-hidden rounded-full text-[0.7rem] font-semibold text-white"
+      style={{
+        width: size,
+        height: size,
+        background: avatar.fallbackColor,
+      }}
+    >
+      {avatar.previewImageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={avatar.previewImageUrl}
+          alt={avatar.label}
+          className="absolute inset-0 h-full w-full object-cover"
+          loading="lazy"
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = "none";
+          }}
+        />
+      ) : null}
+      <span className="relative">{initialsFromLabel(avatar.label)}</span>
+    </span>
+  );
+}
+
+const VOICE_TEMPLATES = [
+  { id: "vt_analyst", label: "Analyst", desc: "Numbers-first, calm" },
+  { id: "vt_founder", label: "Founder", desc: "Conversational, warm" },
+  { id: "vt_closer", label: "Closer", desc: "Direct, urgent" },
+  { id: "vt_advisor", label: "Advisor", desc: "Helpful, patient" },
+];
+
+const PIPELINE_STEPS = [
+  { id: "scrape", label: "Scrape profile + company", icon: Search, duration: 1800 },
+  { id: "stat", label: "Find the angle", icon: Sparkles, duration: 1600 },
+  { id: "script", label: "Write the script", icon: FileText, duration: 1700 },
+  { id: "avatar", label: "Render Avatar V", icon: Cpu, duration: 2200 },
+  { id: "compose", label: "Compose HyperFrames", icon: Wand2, duration: 1800 },
+];
+
+const GALLERY = [
+  {
+    id: "g1",
+    name: "Jane Smith",
+    role: "VP Marketing",
+    company: "Acme Corp",
+    stat: "Homepage loads in 4.2s",
+    accent: "#DC2626",
+  },
+  {
+    id: "g2",
+    name: "David Chen",
+    role: "Head of Growth",
+    company: "Northwind Labs",
+    stat: "Hiring 11 SDRs, no marketing ops",
+    accent: "#F87171",
+  },
+  {
+    id: "g3",
+    name: "Maya Patel",
+    role: "COO",
+    company: "Forge & Co",
+    stat: "Still on Webflow at $5M ARR",
+    accent: "#991B1B",
+  },
+  {
+    id: "g4",
+    name: "Tom Reynolds",
+    role: "CRO",
+    company: "Bluetail",
+    stat: "Glassdoor 3.1 — culture cited",
+    accent: "#7c1d6f",
+  },
+];
+
+type StepStatus = "pending" | "active" | "done";
+
+export default function Home() {
+  // ---------- Avatar list + selection ----------
+  const [avatars, setAvatars] = useState<Avatar[]>([FALLBACK_AVATAR]);
+  const [avatarsLoading, setAvatarsLoading] = useState(true);
+  const [avatar, setAvatar] = useState<Avatar>(FALLBACK_AVATAR);
+  const [avatarOpen, setAvatarOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/avatars")
+      .then((r) => r.json())
+      .then((d: { avatars?: Avatar[] }) => {
+        if (cancelled || !d.avatars?.length) return;
+        setAvatars(d.avatars);
+        setAvatar(d.avatars[0]);
+      })
+      .catch(() => {
+        /* keep fallback */
+      })
+      .finally(() => {
+        if (!cancelled) setAvatarsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const [voiceMode, setVoiceMode] = useState<"templates" | "custom">("templates");
+  const [voiceTemplate, setVoiceTemplate] = useState(VOICE_TEMPLATES[1].id);
+  const [voiceCustom, setVoiceCustom] = useState("");
+
+  const [inputMode, setInputMode] = useState<"linkedin" | "company">("linkedin");
+  const [inputValue, setInputValue] = useState("");
+  const [prompt, setPrompt] = useState("");
+
+  const [engine, setEngine] = useState<"avatar_iv" | "avatar_v">("avatar_v");
+
+  // ---------- Pipeline state ----------
+  const [running, setRunning] = useState(false);
+  const [stepStatuses, setStepStatuses] = useState<StepStatus[]>(
+    PIPELINE_STEPS.map(() => "pending")
+  );
+  const [finishedAt, setFinishedAt] = useState<number | null>(null);
+
+  // ---------- Email capture ----------
+  const [email, setEmail] = useState("");
+  const [emailSent, setEmailSent] = useState(false);
+
+  // ---------- Generate handler (mock for now) ----------
+  const startGeneration = async () => {
+    if (running) return;
+    if (!inputValue.trim() || !prompt.trim()) return;
+    setRunning(true);
+    setFinishedAt(null);
+    setStepStatuses(PIPELINE_STEPS.map(() => "pending"));
+
+    for (let i = 0; i < PIPELINE_STEPS.length; i++) {
+      setStepStatuses((prev) => {
+        const next = [...prev];
+        next[i] = "active";
+        return next;
+      });
+      await new Promise((r) => setTimeout(r, PIPELINE_STEPS[i].duration));
+      setStepStatuses((prev) => {
+        const next = [...prev];
+        next[i] = "done";
+        return next;
+      });
+    }
+    setFinishedAt(Date.now());
+    setRunning(false);
+  };
+
+  const submitEmail = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setEmailSent(true);
+  };
+
+  const completedCount = stepStatuses.filter((s) => s === "done").length;
+  const progressPercent = (completedCount / PIPELINE_STEPS.length) * 100;
+  const canGenerate = inputValue.trim().length > 0 && prompt.trim().length > 0 && !running;
+
+  const engineLabel = engine === "avatar_v" ? "Avatar V" : "Avatar IV";
+
+  const stepSummary = (i: number) => {
+    const targetLabel = inputValue.trim() || "the prospect";
+    switch (PIPELINE_STEPS[i].id) {
+      case "scrape":
+        return `Found Jane Smith, VP Marketing — Acme Corp (${targetLabel})`;
+      case "stat":
+        return "Angle: homepage loads in 4.2s vs 1.8s industry benchmark";
+      case "script":
+        return "Wrote 78-word script, ~30s spoken";
+      case "avatar":
+        return `Rendered ${avatar.label} via ${engineLabel}, 1080p`;
+      case "compose":
+        return "Composed 4 hyperframes synced to speech beats";
+      default:
+        return "";
+    }
+  };
+
+  return (
+    <main className="relative min-h-screen w-full overflow-x-hidden">
+      {/* ===== Hero (compact) ===== */}
+      <section className="relative">
+        <div className="hero-glow" />
+        <div className="relative z-10 mx-auto max-w-6xl px-6 pt-10 pb-6 text-center md:pt-14 md:pb-8">
+          <h1 className="blur-in d-1 text-4xl font-semibold leading-[1.05] tracking-tight md:text-6xl">
+            Personalized Outbound Video
+          </h1>
+          <p className="blur-in d-2 mx-auto mt-4 max-w-xl text-sm text-muted md:text-base">
+            One custom video per prospect. At scale.
+          </p>
+        </div>
+      </section>
+
+      {/* ===== Builder ===== */}
+      <section id="builder" className="relative z-10 mx-auto max-w-5xl px-6 pb-10">
+        <div className="glass rounded-3xl p-6 md:p-8">
+          {/* Avatar + Voice chip row */}
+          <div className="mb-5 flex flex-wrap items-center gap-3">
+            <div className="relative">
+              <button
+                onClick={() => setAvatarOpen((v) => !v)}
+                className="flex items-center gap-2 rounded-full border border-[var(--border-token-strong)] bg-[var(--surface)] px-3 py-2 text-sm transition hover:border-[var(--primary)]"
+              >
+                <AvatarThumb avatar={avatar} size={28} />
+                <span className="flex flex-col items-start leading-tight">
+                  <span className="font-medium">{avatar.label}</span>
+                  <span className="text-[0.7rem] text-muted">
+                    {avatarsLoading ? "Loading…" : "Avatar"}
+                  </span>
+                </span>
+                <ChevronDown className="h-4 w-4 text-muted" />
+              </button>
+              {avatarOpen && (
+                <div className="absolute left-0 top-[calc(100%+8px)] z-30 w-72 rounded-2xl border border-[var(--border-token-strong)] bg-[#0c0c12] p-2 shadow-2xl">
+                  {avatars.map((a) => (
+                    <button
+                      key={a.id}
+                      onClick={() => {
+                        setAvatar(a);
+                        setAvatarOpen(false);
+                      }}
+                      className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left text-sm transition hover:bg-[var(--surface-strong)] ${
+                        a.id === avatar.id ? "bg-[var(--surface)]" : ""
+                      }`}
+                    >
+                      <AvatarThumb avatar={a} size={40} />
+                      <span className="flex flex-1 flex-col">
+                        <span className="font-medium">{a.label}</span>
+                        <span className="text-[0.7rem] text-muted">{a.style}</span>
+                      </span>
+                      {a.id === avatar.id && (
+                        <Check className="h-4 w-4 shrink-0 text-[var(--primary-light)]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="ml-auto flex items-center gap-2 rounded-full border border-[var(--border-token-strong)] bg-[var(--surface)] p-1 text-xs">
+              <Cpu className="ml-2 h-3.5 w-3.5 text-[var(--primary-light)]" />
+              <span className="text-muted">Engine</span>
+              <div className="inline-flex rounded-full bg-[#0c0c12] p-0.5">
+                <button
+                  onClick={() => setEngine("avatar_iv")}
+                  className={`rounded-full px-3 py-1 text-xs transition ${
+                    engine === "avatar_iv"
+                      ? "bg-[var(--primary)] text-white"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  Avatar IV
+                </button>
+                <button
+                  onClick={() => setEngine("avatar_v")}
+                  className={`rounded-full px-3 py-1 text-xs transition ${
+                    engine === "avatar_v"
+                      ? "bg-[var(--primary)] text-white"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  Avatar V
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Voice / brand control */}
+          <div className="mb-5 rounded-2xl border border-[var(--border-token)] bg-[var(--surface)] p-4">
+            <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-wide text-muted">
+              <span className="h-1 w-1 rounded-full bg-[var(--primary)]" />
+              Brand voice
+            </div>
+            <div className="mb-3 inline-flex rounded-full border border-[var(--border-token)] p-1 text-xs">
+              <button
+                onClick={() => setVoiceMode("templates")}
+                className={`rounded-full px-3 py-1 transition ${
+                  voiceMode === "templates"
+                    ? "bg-[var(--primary)] text-white"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                Templates
+              </button>
+              <button
+                onClick={() => setVoiceMode("custom")}
+                className={`rounded-full px-3 py-1 transition ${
+                  voiceMode === "custom"
+                    ? "bg-[var(--primary)] text-white"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                Custom
+              </button>
+            </div>
+
+            {voiceMode === "templates" ? (
+              <div className="flex flex-wrap gap-2">
+                {VOICE_TEMPLATES.map((v) => (
+                  <button
+                    key={v.id}
+                    onClick={() => setVoiceTemplate(v.id)}
+                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition ${
+                      voiceTemplate === v.id
+                        ? "border-[var(--primary)] bg-[var(--primary)]/15 text-foreground"
+                        : "border-[var(--border-token)] text-muted hover:text-foreground"
+                    }`}
+                  >
+                    <span className="font-medium">{v.label}</span>
+                    <span className="text-[0.7rem] opacity-70">· {v.desc}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <textarea
+                value={voiceCustom}
+                onChange={(e) => setVoiceCustom(e.target.value)}
+                placeholder="Describe the voice and tone you want. e.g. 'Direct, no fluff, like a friend who happens to run a B2B startup. Use 1-2 syllable words. Never sound like a sales pitch.'"
+                rows={3}
+                className="w-full resize-none rounded-xl border border-[var(--border-token)] bg-[#0c0c12] px-3 py-2 text-sm placeholder:text-muted/60 focus:border-[var(--primary)] focus:outline-none"
+              />
+            )}
+          </div>
+
+          {/* Target input */}
+          <div className="mb-5 rounded-2xl border border-[var(--border-token)] bg-[var(--surface)] p-4">
+            <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-wide text-muted">
+              <span className="h-1 w-1 rounded-full bg-[var(--primary)]" />
+              Target
+            </div>
+            <div className="mb-3 inline-flex rounded-full border border-[var(--border-token)] p-1 text-xs">
+              <button
+                onClick={() => setInputMode("linkedin")}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1 transition ${
+                  inputMode === "linkedin"
+                    ? "bg-[var(--primary)] text-white"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                <Linkedin className="h-3.5 w-3.5" /> LinkedIn URL
+              </button>
+              <button
+                onClick={() => setInputMode("company")}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1 transition ${
+                  inputMode === "company"
+                    ? "bg-[var(--primary)] text-white"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                <Building2 className="h-3.5 w-3.5" /> Company name
+              </button>
+            </div>
+            <div className="flex items-center gap-2 rounded-xl border border-[var(--border-token)] bg-[#0c0c12] px-3 py-2 focus-within:border-[var(--primary)]">
+              {inputMode === "linkedin" ? (
+                <Linkedin className="h-4 w-4 shrink-0 text-[var(--primary-light)]" />
+              ) : (
+                <Building2 className="h-4 w-4 shrink-0 text-[var(--primary-light)]" />
+              )}
+              <input
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder={
+                  inputMode === "linkedin"
+                    ? "linkedin.com/in/jane-smith"
+                    : "Acme Corp"
+                }
+                className="w-full bg-transparent text-sm outline-none placeholder:text-muted/60"
+              />
+            </div>
+          </div>
+
+          {/* Prompt */}
+          <div className="mb-5 rounded-2xl border border-[var(--border-token)] bg-[var(--surface)] p-4">
+            <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-wide text-muted">
+              <span className="h-1 w-1 rounded-full bg-[var(--primary)]" />
+              Prompt
+              <span className="ml-auto text-[0.7rem] normal-case text-muted/70">
+                What should the video say or focus on?
+              </span>
+            </div>
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Pitch them on a 30-day pilot to fix their homepage load time. Mention their recent hiring push. Keep it punchy, no fluff."
+              rows={3}
+              className="w-full resize-none rounded-xl border border-[var(--border-token)] bg-[#0c0c12] px-3 py-2 text-sm placeholder:text-muted/60 focus:border-[var(--primary)] focus:outline-none"
+            />
+          </div>
+
+          {/* CTA row */}
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <button
+              onClick={startGeneration}
+              disabled={!canGenerate}
+              className="group inline-flex items-center gap-2 rounded-full bg-foreground py-1.5 pl-5 pr-1.5 text-sm font-medium text-[#050508] transition disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <span>{running ? "Generating…" : "Generate video"}</span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--primary)] text-white transition group-hover:bg-[var(--secondary)]">
+                {running ? (
+                  <Loader2 className="h-4 w-4 spin-ring" />
+                ) : (
+                  <ArrowRight className="h-4 w-4" />
+                )}
+              </span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== Pipeline + Result ===== */}
+      {(running || finishedAt) && (
+        <section className="relative z-10 mx-auto max-w-5xl px-6 pb-10">
+          <div className="glass rounded-3xl p-6 md:p-8">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm">
+                <Sparkles className="h-4 w-4 text-[var(--primary-light)]" />
+                <span className="font-medium">Live generation</span>
+                <span className="tag ml-2">
+                  {finishedAt
+                    ? "ready"
+                    : `step ${completedCount + (running ? 1 : 0)} / ${PIPELINE_STEPS.length}`}
+                </span>
+              </div>
+              <div className="text-xs text-muted">
+                {finishedAt ? "Done" : "Working…"}
+              </div>
+            </div>
+
+            <div className="mb-6 h-1.5 w-full overflow-hidden rounded-full bg-[var(--border-token)]">
+              <div
+                className="progress-bar h-full rounded-full"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+              {PIPELINE_STEPS.map((step, i) => {
+                const status = stepStatuses[i];
+                const Icon = step.icon;
+                return (
+                  <div
+                    key={step.id}
+                    className={`flex flex-col gap-3 rounded-2xl border p-4 transition ${
+                      status === "active"
+                        ? "border-[var(--primary)] bg-[var(--primary)]/8"
+                        : status === "done"
+                          ? "border-[var(--border-token-strong)] bg-[var(--surface)]"
+                          : "border-[var(--border-token)] bg-[var(--surface)] opacity-50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div
+                        className={`flex h-9 w-9 items-center justify-center rounded-full ${
+                          status === "active"
+                            ? "bg-[var(--primary)] text-white"
+                            : status === "done"
+                              ? "bg-[var(--surface-strong)] text-[var(--primary-light)]"
+                              : "bg-[var(--surface-strong)] text-muted"
+                        }`}
+                      >
+                        {status === "active" ? (
+                          <Loader2 className="h-4 w-4 spin-ring" />
+                        ) : status === "done" ? (
+                          <Check className="h-4 w-4" />
+                        ) : (
+                          <Icon className="h-4 w-4" />
+                        )}
+                      </div>
+                      <span className="font-mono text-[0.7rem] text-muted">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                    </div>
+                    <div className="text-sm font-medium leading-tight">{step.label}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Log feed — one line per completed step */}
+            {(completedCount > 0 || running) && (
+              <div className="mt-5 rounded-2xl border border-[var(--border-token)] bg-[#08080c] p-4 font-mono text-[0.78rem] leading-relaxed">
+                {PIPELINE_STEPS.map((step, i) => {
+                  const status = stepStatuses[i];
+                  if (status === "pending") return null;
+                  if (status === "active") {
+                    return (
+                      <div key={step.id} className="flex items-center gap-2 text-muted">
+                        <Loader2 className="h-3 w-3 shrink-0 spin-ring text-[var(--primary-light)]" />
+                        <span className="text-[var(--primary-light)]">
+                          {step.label.toLowerCase()}…
+                        </span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div
+                      key={step.id}
+                      className="flex items-center gap-2 text-foreground/85"
+                    >
+                      <Check className="h-3 w-3 shrink-0 text-[var(--primary-light)]" />
+                      <span>{stepSummary(i)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Result */}
+            {finishedAt && (
+              <div className="mt-6 grid grid-cols-1 gap-4 rounded-2xl border border-[var(--border-token-strong)] bg-[var(--surface)] p-4 md:grid-cols-[1.2fr_1fr] md:p-6">
+                <div
+                  className="relative flex aspect-video items-center justify-center overflow-hidden rounded-xl"
+                  style={{
+                    background:
+                      "radial-gradient(ellipse at 30% 30%, rgba(248,113,113,0.18), transparent 60%), #0c0c12",
+                  }}
+                >
+                  <button className="flex h-16 w-16 items-center justify-center rounded-full bg-foreground text-[#050508] transition hover:scale-105">
+                    <Play className="h-6 w-6 translate-x-[1px]" fill="currentColor" />
+                  </button>
+                  <span className="absolute bottom-3 left-3 tag">0:30 · 1080p</span>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <div className="text-xs uppercase tracking-wide text-muted">
+                    Result
+                  </div>
+                  <div className="text-base font-medium">
+                    {inputMode === "linkedin"
+                      ? inputValue || "Your prospect"
+                      : inputValue || "Your company"}
+                  </div>
+                  <div className="text-sm text-muted">
+                    {prompt.slice(0, 140) || "Personalized 30-second outbound video."}
+                  </div>
+                  <div className="mt-auto flex flex-wrap items-center gap-2">
+                    <button className="rounded-full bg-foreground px-4 py-1.5 text-xs font-medium text-[#050508] transition hover:bg-white/90">
+                      Download MP4
+                    </button>
+                    <button className="rounded-full border border-[var(--border-token-strong)] px-4 py-1.5 text-xs transition hover:border-[var(--primary)]">
+                      Share link
+                    </button>
+                    <button className="rounded-full border border-[var(--border-token-strong)] px-4 py-1.5 text-xs transition hover:border-[var(--primary)]">
+                      Regenerate
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ===== Email capture ===== */}
+      <section id="email" className="relative z-10 mx-auto max-w-5xl px-6 pb-16 pt-4">
+        <div className="glass glass-hover rounded-3xl p-6 md:p-8">
+          <div className="flex flex-col items-start gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-xl">
+              <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted">
+                <Mail className="h-3.5 w-3.5 text-[var(--primary-light)]" />
+                For B2B operators
+              </div>
+              <h3 className="text-2xl font-semibold tracking-tight md:text-3xl">
+                Want this wired into your outbound?
+              </h3>
+              <p className="mt-2 text-sm text-muted">
+                We&apos;ll set it up against your CRM and run it at scale.
+                Drop your email and we&apos;ll reach out.
+              </p>
+            </div>
+            <form
+              onSubmit={submitEmail}
+              className="flex w-full max-w-md items-center gap-2 rounded-full border border-[var(--border-token-strong)] bg-[var(--surface)] p-1.5 md:w-auto"
+            >
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@company.com"
+                className="w-full bg-transparent px-4 py-2 text-sm outline-none placeholder:text-muted/60 md:w-72"
+              />
+              <button
+                type="submit"
+                className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-xs font-medium text-[#050508] transition hover:bg-white/90"
+              >
+                {emailSent ? (
+                  <>
+                    <Check className="h-3.5 w-3.5" /> Got it
+                  </>
+                ) : (
+                  <>
+                    Get early access <ArrowRight className="h-3.5 w-3.5" />
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== Gallery ===== */}
+      <section id="gallery" className="relative z-10 mx-auto max-w-7xl px-6 pb-24">
+        <div className="mb-6 flex items-end justify-between">
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted">
+              <Video className="h-3.5 w-3.5 text-[var(--primary-light)]" />
+              Gallery
+            </div>
+            <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+              Recent generations
+            </h2>
+            <p className="mt-1 text-sm text-muted">
+              Pre-rendered samples. Click any to play.
+            </p>
+          </div>
+          <button className="hidden items-center gap-1.5 rounded-full border border-[var(--border-token-strong)] px-4 py-2 text-xs transition hover:border-[var(--primary)] md:inline-flex">
+            View all
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {GALLERY.map((g) => (
+            <button
+              key={g.id}
+              className="glass glass-hover group flex flex-col overflow-hidden rounded-2xl text-left"
+            >
+              <div
+                className="relative flex aspect-video items-center justify-center"
+                style={{
+                  background: `radial-gradient(ellipse at 30% 30%, ${g.accent}33, transparent 60%), #0c0c12`,
+                }}
+              >
+                <span
+                  className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold text-white"
+                  style={{ background: g.accent }}
+                >
+                  {g.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")}
+                </span>
+                <span className="absolute bottom-3 left-3 tag">0:30</span>
+                <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-foreground/90 text-[#050508] opacity-0 transition group-hover:opacity-100">
+                  <Play className="h-4 w-4 translate-x-[1px]" fill="currentColor" />
+                </span>
+              </div>
+              <div className="flex flex-col gap-1 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium">{g.name}</div>
+                  <ChevronDown className="h-3.5 w-3.5 -rotate-90 text-muted transition group-hover:text-foreground" />
+                </div>
+                <div className="text-xs text-muted">
+                  {g.role} · {g.company}
+                </div>
+                <div className="mt-2 text-xs text-[var(--primary-light)]">{g.stat}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* ===== Footer ===== */}
+      <footer className="border-t border-[var(--border-token)] py-8 text-center text-xs text-muted">
+        <div className="mx-auto max-w-7xl px-6">
+          Built for the HeyGen WTD hackathon · May 2026 ·{" "}
+          <a
+            href="https://aiforoperations.io"
+            className="text-foreground/80 hover:text-foreground"
+          >
+            AIforOperations
+          </a>
+        </div>
+      </footer>
+    </main>
+  );
+}
