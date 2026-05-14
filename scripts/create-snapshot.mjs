@@ -45,11 +45,18 @@ if (!process.env.VERCEL_OIDC_TOKEN) {
 const deploymentId = process.env.VERCEL_DEPLOYMENT_ID ?? "dev";
 const pointerKey = `snapshot-cache/${deploymentId}.json`;
 
-console.log("[snapshot] creating sandbox…");
-const sandbox = await Sandbox.create({
-  resources: SANDBOX_RESOURCES,
-  timeout: `${Math.floor(SETUP_TIMEOUT_MS / 1000)}s`,
-});
+let sandbox;
+try {
+  console.log("[snapshot] creating sandbox…");
+  sandbox = await Sandbox.create({
+    resources: SANDBOX_RESOURCES,
+    timeout: SETUP_TIMEOUT_MS, // integer milliseconds
+  });
+} catch (err) {
+  console.error("[snapshot] sandbox.create failed — deploy continues without cache:", err);
+  // Don't fail the deploy. /api/render has a fresh-setup fallback.
+  process.exit(0);
+}
 
 async function step(label, opts) {
   console.log(`[snapshot] ▶ ${label}`);
