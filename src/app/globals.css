@@ -24,8 +24,8 @@
   --color-surface-strong: var(--surface-strong);
   --color-border-token: var(--border);
   --color-border-token-strong: var(--border-strong);
-  --font-sans: var(--font-sora);
-  --font-mono: var(--font-jetbrains);
+  --font-sans: var(--font-geist);
+  --font-mono: var(--font-geist-mono);
 }
 
 html,
@@ -35,7 +35,9 @@ body {
 }
 
 body {
-  font-family: var(--font-sora), "Sora", system-ui, sans-serif;
+  font-family: var(--font-geist), "Geist", system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  letter-spacing: -0.005em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -193,6 +195,6 @@ td {
   border-radius: 6px;
   font-size: 0.72rem;
   font-weight: 500;
-  font-family: var(--font-jetbrains), "JetBrains Mono", monospace;
+  font-family: var(--font-geist-mono), "Geist Mono", ui-monospace, monospace;
   letter-spacing: 0.02em;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Building2,
@@ -74,6 +74,8 @@ function AvatarThumb({
   avatar: Avatar;
   size?: number;
 }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImg = !!avatar.previewImageUrl && !imgFailed;
   return (
     <span
       className="relative flex shrink-0 items-center justify-center overflow-hidden rounded-full text-[0.7rem] font-semibold text-white"
@@ -82,20 +84,20 @@ function AvatarThumb({
         height: size,
         background: avatar.fallbackColor,
       }}
+      aria-label={avatar.label}
     >
-      {avatar.previewImageUrl ? (
+      {showImg ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={avatar.previewImageUrl}
-          alt={avatar.label}
+          src={avatar.previewImageUrl!}
+          alt=""
           className="absolute inset-0 h-full w-full object-cover"
           loading="lazy"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
+          onError={() => setImgFailed(true)}
         />
-      ) : null}
-      <span className="relative">{initialsFromLabel(avatar.label)}</span>
+      ) : (
+        <span aria-hidden="true">{initialsFromLabel(avatar.label)}</span>
+      )}
     </span>
   );
 }
@@ -152,12 +154,15 @@ const GALLERY = [
 
 type StepStatus = "pending" | "active" | "done";
 
+const PROMPT_LIMIT = 1200;
+
 export default function Home() {
   // ---------- Avatar list + selection ----------
   const [avatars, setAvatars] = useState<Avatar[]>([FALLBACK_AVATAR]);
   const [avatarsLoading, setAvatarsLoading] = useState(true);
   const [avatar, setAvatar] = useState<Avatar>(FALLBACK_AVATAR);
   const [avatarOpen, setAvatarOpen] = useState(false);
+  const avatarRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -178,6 +183,25 @@ export default function Home() {
       cancelled = true;
     };
   }, []);
+
+  // Close avatar dropdown on click outside or Escape
+  useEffect(() => {
+    if (!avatarOpen) return;
+    const onMouseDown = (e: MouseEvent) => {
+      if (!avatarRef.current?.contains(e.target as Node)) {
+        setAvatarOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAvatarOpen(false);
+    };
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [avatarOpen]);
 
   const [voiceMode, setVoiceMode] = useState<"templates" | "custom">("templates");
   const [voiceTemplate, setVoiceTemplate] = useState(VOICE_TEMPLATES[1].id);
@@ -225,6 +249,19 @@ export default function Home() {
     setRunning(false);
   };
 
+  // Cmd+Enter / Ctrl+Enter to fire generation from anywhere on the page
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        startGeneration();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inputValue, prompt, running]);
+
   const submitEmail = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
@@ -234,6 +271,13 @@ export default function Home() {
   const completedCount = stepStatuses.filter((s) => s === "done").length;
   const progressPercent = (completedCount / PIPELINE_STEPS.length) * 100;
   const canGenerate = inputValue.trim().length > 0 && prompt.trim().length > 0 && !running;
+  const disabledReason = running
+    ? "Running…"
+    : !inputValue.trim()
+      ? `Add a ${inputMode === "linkedin" ? "LinkedIn URL" : "company name"} first`
+      : !prompt.trim()
+        ? "Add a prompt — what should the video say?"
+        : "";
 
   const engineLabel = engine === "avatar_v" ? "Avatar V" : "Avatar IV";
 
@@ -275,9 +319,11 @@ export default function Home() {
         <div className="glass rounded-3xl p-6 md:p-8">
           {/* Avatar + Voice chip row */}
           <div className="mb-5 flex flex-wrap items-center gap-3">
-            <div className="relative">
+            <div ref={avatarRef} className="relative">
               <button
                 onClick={() => setAvatarOpen((v) => !v)}
+                aria-haspopup="listbox"
+                aria-expanded={avatarOpen}
                 className="flex items-center gap-2 rounded-full border border-[var(--border-token-strong)] bg-[var(--surface)] px-3 py-2 text-sm transition hover:border-[var(--primary)]"
               >
                 <AvatarThumb avatar={avatar} size={28} />
@@ -453,13 +499,26 @@ export default function Home() {
             <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-wide text-muted">
               <span className="h-1 w-1 rounded-full bg-[var(--primary)]" />
               Prompt
-              <span className="ml-auto text-[0.7rem] normal-case text-muted/70">
-                What should the video say or focus on?
+              <span className="ml-auto flex items-center gap-3 text-[0.7rem] normal-case text-muted/70">
+                <span>What should the video say or focus on?</span>
+                <span
+                  className={`font-mono ${
+                    prompt.length > PROMPT_LIMIT * 0.9
+                      ? "text-[var(--primary-light)]"
+                      : ""
+                  }`}
+                >
+                  {prompt.length}/{PROMPT_LIMIT}
+                </span>
               </span>
             </div>
             <textarea
               value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value.length <= PROMPT_LIMIT) {
+                  setPrompt(e.target.value);
+                }
+              }}
               placeholder="Pitch them on a 30-day pilot to fix their homepage load time. Mention their recent hiring push. Keep it punchy, no fluff."
               rows={3}
               className="w-full resize-none rounded-xl border border-[var(--border-token)] bg-[#0c0c12] px-3 py-2 text-sm placeholder:text-muted/60 focus:border-[var(--primary)] focus:outline-none"
@@ -467,10 +526,23 @@ export default function Home() {
           </div>
 
           {/* CTA row */}
-          <div className="flex flex-wrap items-center justify-end gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-xs text-muted/80">
+              {disabledReason || (
+                <span className="text-foreground/70">
+                  Ready &nbsp;
+                  <span className="font-mono text-muted/70">
+                    <kbd className="rounded border border-[var(--border-token)] bg-[var(--surface)] px-1.5 py-0.5 text-[10px]">⌘</kbd>
+                    {" + "}
+                    <kbd className="rounded border border-[var(--border-token)] bg-[var(--surface)] px-1.5 py-0.5 text-[10px]">↵</kbd>
+                  </span>
+                </span>
+              )}
+            </div>
             <button
               onClick={startGeneration}
               disabled={!canGenerate}
+              title={disabledReason || "Generate video"}
               className="group inline-flex items-center gap-2 rounded-full bg-foreground py-1.5 pl-5 pr-1.5 text-sm font-medium text-[#050508] transition disabled:cursor-not-allowed disabled:opacity-40"
             >
               <span>{running ? "Generating…" : "Generate video"}</span>
