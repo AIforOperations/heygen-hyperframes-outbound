@@ -35,10 +35,12 @@ type Avatar = {
   id: string;
   label: string;
   style: string;
+  voiceId: string;
+  voiceName: string;
   fallbackColor: string;
   previewImageUrl: string | null;
   previewVideoUrl: string | null;
-  defaultVoiceId: string | null;
+  heygenDefaultVoiceId: string | null;
   supportedEngines: ("avatar_v" | "avatar_iv")[];
 };
 
@@ -46,10 +48,12 @@ const FALLBACK_AVATAR: Avatar = {
   id: "ari-fallback",
   label: "Ari",
   style: "Founder, AIforOperations",
+  voiceId: "01f98ed43e6140349f47dbd37a416827",
+  voiceName: "Cody (M)",
   fallbackColor: "#DC2626",
   previewImageUrl: null,
   previewVideoUrl: null,
-  defaultVoiceId: null,
+  heygenDefaultVoiceId: null,
   supportedEngines: ["avatar_v"],
 };
 

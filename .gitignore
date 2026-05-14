@@ -37,6 +37,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local test renders — keep JSON metadata, ignore binary MP4s
+/video/*.mp4
+/video/*.webm
+/video/*.mov
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.env*.local

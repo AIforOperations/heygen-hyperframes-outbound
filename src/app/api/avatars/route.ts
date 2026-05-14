@@ -23,7 +23,7 @@ export async function GET() {
             ...curated,
             previewImageUrl: look.preview_image_url,
             previewVideoUrl: look.preview_video_url,
-            defaultVoiceId: look.default_voice_id,
+            heygenDefaultVoiceId: look.default_voice_id,
             supportedEngines:
               (look.supported_api_engines as ("avatar_v" | "avatar_iv")[]) ?? [],
           };
@@ -34,7 +34,7 @@ export async function GET() {
             ...curated,
             previewImageUrl: null,
             previewVideoUrl: null,
-            defaultVoiceId: null,
+            heygenDefaultVoiceId: null,
             supportedEngines: [],
           };
         }

@@ -4,11 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/create-snapshot.mjs",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@hyperframes/core": "^0.6.6",
+    "@vercel/blob": "^2.3.3",
+    "@vercel/sandbox": "^1.10.2",
+    "hyperframes": "^0.6.6",
     "lucide-react": "^1.16.0",
     "next": "16.2.6",
     "react": "19.2.4",

@@ -10,7 +10,7 @@ import "server-only";
  * ANTHROPIC_API_KEY happens to be unset.
  */
 
-const REQUIRED = ["HEYGEN_API_KEY", "ANTHROPIC_API_KEY"] as const;
+const REQUIRED = ["HEYGEN_API_KEY", "ANTHROPIC_API_KEY", "ELEVENLABS_API_KEY"] as const;
 const OPTIONAL = ["APIFY_TOKEN", "SERPAPI_KEY"] as const;
 
 type Required = (typeof REQUIRED)[number];
@@ -19,6 +19,7 @@ type Optional = (typeof OPTIONAL)[number];
 interface Env {
   HEYGEN_API_KEY: string;
   ANTHROPIC_API_KEY: string;
+  ELEVENLABS_API_KEY: string;
   APIFY_TOKEN: string | undefined;
   SERPAPI_KEY: string | undefined;
   SITE_URL: string;
