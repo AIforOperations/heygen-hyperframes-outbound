@@ -54,7 +54,7 @@ export default function GalleryPage() {
       <section className="relative z-10 mx-auto max-w-7xl px-6 pb-24">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {GALLERY.map((g) => (
-            <button
+            <div
               key={g.id}
               className="glass glass-hover group flex flex-col overflow-hidden rounded-2xl text-left"
             >
@@ -67,6 +67,7 @@ export default function GalleryPage() {
                 {g.videoUrl ? (
                   <video
                     src={g.videoUrl}
+                    controls
                     autoPlay
                     muted
                     loop
@@ -75,25 +76,27 @@ export default function GalleryPage() {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <span
-                    className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold text-white shadow-lg"
-                    style={{ background: g.accent }}
-                  >
-                    {g.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")}
-                  </span>
+                  <>
+                    <span
+                      className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold text-white shadow-lg"
+                      style={{ background: g.accent }}
+                    >
+                      {g.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </span>
+                    <span
+                      className="absolute bottom-3 left-3 tag"
+                      style={{ background: "rgba(255,255,255,0.92)" }}
+                    >
+                      0:30
+                    </span>
+                    <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#0a0a0c] opacity-0 shadow-lg transition group-hover:opacity-100">
+                      <Play className="h-4 w-4 translate-x-[1px]" fill="currentColor" />
+                    </span>
+                  </>
                 )}
-                <span
-                  className="absolute bottom-3 left-3 tag"
-                  style={{ background: "rgba(255,255,255,0.92)" }}
-                >
-                  0:30
-                </span>
-                <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#0a0a0c] opacity-0 shadow-lg transition group-hover:opacity-100">
-                  <Play className="h-4 w-4 translate-x-[1px]" fill="currentColor" />
-                </span>
               </div>
               <div className="flex flex-col gap-1 p-4">
                 <div className="text-sm font-medium">{g.name}</div>
@@ -104,7 +107,7 @@ export default function GalleryPage() {
                   {g.stat}
                 </div>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       </section>
