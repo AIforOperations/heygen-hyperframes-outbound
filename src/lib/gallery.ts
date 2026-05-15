@@ -10,16 +10,6 @@ export type GalleryEntry = {
 
 export const GALLERY: GalleryEntry[] = [
   {
-    id: "g_joshua",
-    name: "Joshua X.",
-    role: "Co-Founder and CEO",
-    company: "HeyGen",
-    stat: "Claude-planned scenes · 9:16 portrait source",
-    accent: "#DC2626",
-    videoUrl:
-      "https://x2aue1n8zm76mdax.public.blob.vercel-storage.com/renders/v2-smoke-2026-05-15T17-17-09-752Z-odVJ9m2jsaWpCCjslmJeU36AxOeDiM.mp4",
-  },
-  {
     id: "g0",
     name: "Scott Ford",
     role: "Founder",

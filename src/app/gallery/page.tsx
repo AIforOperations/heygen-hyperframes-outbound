@@ -13,8 +13,16 @@ export const revalidate = 0;
 
 const ACCENTS = ["#DC2626", "#F87171", "#991B1B", "#7c1d6f", "#1f3a5f", "#374151"];
 
+// Same hidden-jobs list /api/gallery uses. Keep them in sync — the homepage
+// uses the API, /gallery uses this function. Both must reach the same filter.
+const HIDDEN_JOB_IDS = new Set<string>([
+  "sts_RNQQCQTtLur2",
+  "etYmHrskfFCAK6hl",
+]);
+
 async function getEntries(): Promise<GalleryEntry[]> {
-  const jobs = (await listCompletedJobs(20)) ?? [];
+  const allJobs = (await listCompletedJobs(20)) ?? [];
+  const jobs = allJobs.filter((j) => !HIDDEN_JOB_IDS.has(j.jobId));
   const dynamic: GalleryEntry[] = jobs.map((j, i) => {
     const lead = j.lead;
     const firstName = lead?.firstName ?? lead?.fullName ?? "Prospect";
