@@ -1,0 +1,12 @@
+{
+  "createdAt": "2026-05-15T10:15:31.480Z",
+  "avatarId": "ed822d92ced6420abde4a1dd5d8b103b",
+  "voiceId": "b5d203bb736348b4b456275351955a24",
+  "engine": "avatar_iv",
+  "script": "Hey there. Avatar IV engine test. If you are watching this, the iv/v selection works on the back end.",
+  "videoId": "2ca961f233bb4ae5bc6e5f6aa455c47a",
+  "videoUrl": "https://files2.heygen.ai/aws_pacific/avatar_tmp/e31e7837203a410e89f57b727c84f8a3/2ca961f233bb4ae5bc6e5f6aa455c47a.mp4?Expires=1779444931&Signature=LEOrQqaa~-jyKpN3Vf1GeZmAlse9QlkkB27NcImJrfPoAoWT--wak4vru3VlsTXRHTibVBaejujBalk6N7FQ1VOK0~0CKBe5rHVuKS~rKAYbHHL3AtXKYP0UCNCGxS45jai5A3XfeqVaFARhnskQ637yzp19k2x0Lq1~M-s-8xujyusaEFn2HRzJVZJPtRh74DxXJgyS4D1nctrj3rNjnPuJ5e1pNMbLsinRNdQSNpUl26PEuczEYekegATH5-Znmn2xyJsNkrw3CK52Uv1C2W~edb33O8fWLuo3ykoGT18sD2o69XhWcKIbVi1p~b~KNWXabsU4iOtSm3LDO96qig__&Key-Pair-Id=K38HBHX5LX3X2H",
+  "duration": 7.10531,
+  "transcript": null,
+  "wordTimestamps": null
+}

@@ -5,13 +5,12 @@ import { CURATED_AVATARS, type ResolvedAvatar } from "@/lib/avatars";
 /**
  * GET /api/avatars
  *
- * Returns the curated 6 avatars (Ari + 5 public photo avatars) with fresh
- * preview URLs from HeyGen. Preview URLs from photo_avatar looks are
- * presigned and expire, so we fetch them on every request.
+ * Returns the curated 7 avatars (Ari + 6 public studio avatars: Annie,
+ * Brandon, Masha, Leos, Joel, Leszek) with fresh preview URLs and
+ * per-avatar crop hints for HyperFrames compositions.
  *
- * Response order matches CURATED_AVATARS — Ari first.
- *
- * Cache headers: 5 minutes, since URLs are valid for at least that.
+ * Preview URLs are presigned and short-lived; we fetch on every request.
+ * Order matches CURATED_AVATARS — Ari first.
  */
 export async function GET() {
   try {

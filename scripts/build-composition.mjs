@@ -1,17 +1,18 @@
 #!/usr/bin/env node
 /**
  * Build a HyperFrames composition with a Loom-style layout:
- *   - Left third (0–640px of a 1920-wide frame): avatar in a circle,
- *     diameter 512px (20% smaller than the third), vertically centered.
- *   - Right two-thirds: dark brand background with animated title cards
- *     that fade + slide in on phrase boundaries.
+ *   - Avatar circle on the left, vertically centered, 614px diameter
+ *     (20% larger than the original 512px — encroaches slightly past the
+ *     visual 1/3 line but keeps 64px padding from screen edge).
+ *   - Right column for animated title cards.
+ *
+ * Per-avatar crop hints control how the source video is positioned and
+ * zoomed inside the circle. These are passed via the metadata sidecar
+ * (avatarId + crop fields written by /api/test/generate-video). If the
+ * sidecar doesn't include crop hints, default values are used.
  *
  * Usage:
  *   node scripts/build-composition.mjs <metadata.json> <composition-dir>
- *
- * The metadata.json sidecar (emitted by /api/test/generate-video) supplies
- * the duration and word timestamps; the MP4 alongside it is the avatar
- * source.
  */
 
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from "node:fs";
@@ -38,6 +39,33 @@ if (!Number.isFinite(duration) || duration <= 0) {
   console.error("metadata.duration missing or invalid");
   process.exit(1);
 }
+
+// Resolve per-avatar crop hints. Either the sidecar already carries them
+// (preferred) or we look them up by avatarId from the curated config.
+let crop = meta.crop ?? null;
+if (!crop && meta.avatarId) {
+  try {
+    // Lazy-load the curated module since it's ESM/TS — read raw text.
+    const avatarsTs = readFileSync(path.join(ROOT, "src/lib/avatars.ts"), "utf8");
+    // Quick regex grab — looking for the avatar's entry by id
+    const idMatch = avatarsTs.indexOf(`id: "${meta.avatarId}"`);
+    if (idMatch !== -1) {
+      const tail = avatarsTs.slice(idMatch, idMatch + 1500);
+      const cropMatch = tail.match(/crop:\s*\{\s*positionY:\s*"([^"]+)",\s*scale:\s*([0-9.]+),\s*originY:\s*"([^"]+)"/);
+      if (cropMatch) {
+        crop = {
+          positionY: cropMatch[1],
+          scale: parseFloat(cropMatch[2]),
+          originY: cropMatch[3],
+        };
+      }
+    }
+  } catch (e) {
+    console.warn("could not resolve crop from avatars.ts:", e.message);
+  }
+}
+crop = crop ?? { positionY: "30%", scale: 1.0, originY: "30%" };
+console.log(`  crop: scale=${crop.scale}, origin-y=${crop.originY}, pos-y=${crop.positionY}`);
 
 // Copy MP4 source alongside JSON → assets/avatar.mp4
 const mp4Source = metaPath.replace(/\.json$/, ".mp4");
@@ -139,24 +167,27 @@ const html = `<!DOCTYPE html>
         linear-gradient(135deg, #FAF5E9 0%, #F1E9D8 100%);
     }
 
-    /* ===== Avatar circle (left third) =====
-       Region: 0–640px. Circle: 512px diameter.
-       Horiz center of region = 320. Circle left = 320 - 256 = 64.
-       Vert center = 540. Circle top = 540 - 256 = 284.
+    /* ===== Avatar circle =====
+       614px diameter (20% larger than original 512). Keeps 64px padding
+       from the left edge of the 1920-wide frame, encroaching ~38px past
+       the visual 1/3 line (1920/3 = 640). Vertically centered.
+         left = 64
+         right edge = 64 + 614 = 678
+         top = (1080 - 614) / 2 = 233
     */
     .avatar-ring {
       position: absolute;
       left: 64px;
-      top: 284px;
-      width: 512px;
-      height: 512px;
+      top: 233px;
+      width: 614px;
+      height: 614px;
       border-radius: 50%;
       overflow: hidden;
       box-shadow:
-        0 0 0 6px #ffffff,
-        0 0 0 10px rgba(220, 38, 38, 0.85),
-        0 30px 70px rgba(80, 30, 10, 0.18),
-        0 10px 30px rgba(80, 30, 10, 0.10);
+        0 0 0 7px #ffffff,
+        0 0 0 12px rgba(220, 38, 38, 0.85),
+        0 40px 80px rgba(80, 30, 10, 0.20),
+        0 12px 36px rgba(80, 30, 10, 0.12);
       background: var(--bg-2);
     }
     .avatar-ring video {
@@ -165,15 +196,21 @@ const html = `<!DOCTYPE html>
       width: 100%;
       height: 100%;
       object-fit: cover;
-      object-position: 50% 25%; /* push view up so face sits in upper half */
+      /* Per-avatar crop values get inlined via CSS variables below */
+      object-position: 50% var(--avatar-pos-y, 30%);
+      transform: scale(var(--avatar-scale, 1.0));
+      transform-origin: 50% var(--avatar-origin-y, 30%);
     }
 
-    /* ===== Right column ===== */
+    /* ===== Right column =====
+       Bumped from left:720 → left:760 to give the larger circle a 82px
+       gutter (was 42px). Right column width adjusted accordingly.
+    */
     .right-col {
       position: absolute;
-      left: 720px;          /* leaves ~80px gutter from circle */
+      left: 760px;
       top: 0;
-      width: 1120px;        /* 1920 - 720 - 80 padding right */
+      width: 1080px;        /* 1920 - 760 - 80 padding right */
       height: 1080px;
       padding: 0 80px 0 0;
       display: flex;
@@ -271,10 +308,13 @@ const html = `<!DOCTYPE html>
        data-start="0"
        data-duration="${duration.toFixed(3)}">
 
-    <!-- Avatar in circle, vertically centered in left third.
-         Wrapper is a non-timed visual container (no class="clip", no data-start);
-         the <video> inside owns timing so HyperFrames manages playback. -->
-    <div id="avatar-ring" class="avatar-ring">
+    <!-- Avatar in circle, vertically centered. Wrapper is a non-timed
+         visual container (no class="clip", no data-start); the <video>
+         inside owns timing so HyperFrames manages playback. Per-avatar
+         crop variables are inlined so each avatar gets the right zoom +
+         vertical framing inside the circle. -->
+    <div id="avatar-ring" class="avatar-ring"
+         style="--avatar-scale: ${crop.scale}; --avatar-pos-y: ${crop.positionY}; --avatar-origin-y: ${crop.originY};">
       <video
         id="avatar"
         class="clip"

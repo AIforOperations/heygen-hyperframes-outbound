@@ -31,6 +31,11 @@ function Linkedin({ className }: { className?: string }) {
 }
 
 // ---------- Avatar type (loaded from /api/avatars) ----------
+type AvatarCrop = {
+  positionY: string;
+  scale: number;
+  originY: string;
+};
 type Avatar = {
   id: string;
   label: string;
@@ -38,6 +43,7 @@ type Avatar = {
   voiceId: string;
   voiceName: string;
   fallbackColor: string;
+  crop: AvatarCrop;
   previewImageUrl: string | null;
   previewVideoUrl: string | null;
   heygenDefaultVoiceId: string | null;
@@ -51,6 +57,7 @@ const FALLBACK_AVATAR: Avatar = {
   voiceId: "01f98ed43e6140349f47dbd37a416827",
   voiceName: "Cody (M)",
   fallbackColor: "#DC2626",
+  crop: { positionY: "22%", scale: 1.0, originY: "30%" },
   previewImageUrl: null,
   previewVideoUrl: null,
   heygenDefaultVoiceId: null,

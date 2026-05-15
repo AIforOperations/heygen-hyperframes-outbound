@@ -29,24 +29,27 @@
         linear-gradient(135deg, #FAF5E9 0%, #F1E9D8 100%);
     }
 
-    /* ===== Avatar circle (left third) =====
-       Region: 0–640px. Circle: 512px diameter.
-       Horiz center of region = 320. Circle left = 320 - 256 = 64.
-       Vert center = 540. Circle top = 540 - 256 = 284.
+    /* ===== Avatar circle =====
+       614px diameter (20% larger than original 512). Keeps 64px padding
+       from the left edge of the 1920-wide frame, encroaching ~38px past
+       the visual 1/3 line (1920/3 = 640). Vertically centered.
+         left = 64
+         right edge = 64 + 614 = 678
+         top = (1080 - 614) / 2 = 233
     */
     .avatar-ring {
       position: absolute;
       left: 64px;
-      top: 284px;
-      width: 512px;
-      height: 512px;
+      top: 233px;
+      width: 614px;
+      height: 614px;
       border-radius: 50%;
       overflow: hidden;
       box-shadow:
-        0 0 0 6px #ffffff,
-        0 0 0 10px rgba(220, 38, 38, 0.85),
-        0 30px 70px rgba(80, 30, 10, 0.18),
-        0 10px 30px rgba(80, 30, 10, 0.10);
+        0 0 0 7px #ffffff,
+        0 0 0 12px rgba(220, 38, 38, 0.85),
+        0 40px 80px rgba(80, 30, 10, 0.20),
+        0 12px 36px rgba(80, 30, 10, 0.12);
       background: var(--bg-2);
     }
     .avatar-ring video {
@@ -55,15 +58,21 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      object-position: 50% 25%; /* push view up so face sits in upper half */
+      /* Per-avatar crop values get inlined via CSS variables below */
+      object-position: 50% var(--avatar-pos-y, 30%);
+      transform: scale(var(--avatar-scale, 1.0));
+      transform-origin: 50% var(--avatar-origin-y, 30%);
     }
 
-    /* ===== Right column ===== */
+    /* ===== Right column =====
+       Bumped from left:720 → left:760 to give the larger circle a 82px
+       gutter (was 42px). Right column width adjusted accordingly.
+    */
     .right-col {
       position: absolute;
-      left: 720px;          /* leaves ~80px gutter from circle */
+      left: 760px;
       top: 0;
-      width: 1120px;        /* 1920 - 720 - 80 padding right */
+      width: 1080px;        /* 1920 - 760 - 80 padding right */
       height: 1080px;
       padding: 0 80px 0 0;
       display: flex;
@@ -161,10 +170,13 @@
        data-start="0"
        data-duration="11.128">
 
-    <!-- Avatar in circle, vertically centered in left third.
-         Wrapper is a non-timed visual container (no class="clip", no data-start);
-         the <video> inside owns timing so HyperFrames manages playback. -->
-    <div id="avatar-ring" class="avatar-ring">
+    <!-- Avatar in circle, vertically centered. Wrapper is a non-timed
+         visual container (no class="clip", no data-start); the <video>
+         inside owns timing so HyperFrames manages playback. Per-avatar
+         crop variables are inlined so each avatar gets the right zoom +
+         vertical framing inside the circle. -->
+    <div id="avatar-ring" class="avatar-ring"
+         style="--avatar-scale: 1; --avatar-pos-y: 30%; --avatar-origin-y: 30%;">
       <video
         id="avatar"
         class="clip"
