@@ -146,12 +146,23 @@ export async function writeJob(job: JobState): Promise<JobState> {
   return next;
 }
 
-/** Try to claim the processing lock. Returns true if claimed, false if
- * another caller is already advancing this job. */
+/** Try to claim the processing lock. Returns the claimed job state if
+ * acquired, null if another caller is actively advancing this job.
+ *
+ * Stale-lock detection: if processing=true but the job hasn't been touched
+ * in >2 minutes, the previous holder was almost certainly killed by Vercel's
+ * 300s function timeout. We force-claim so the pipeline can continue. */
+const STALE_LOCK_MS = 120_000;
+
 export async function tryClaimProcessing(jobId: string): Promise<JobState | null> {
   const current = await readJob(jobId);
   if (!current) return null;
-  if (current.processing) return null;
+  if (current.processing) {
+    const updatedMs = new Date(current.updatedAt).getTime();
+    const age = Date.now() - updatedMs;
+    if (age < STALE_LOCK_MS) return null;
+    console.warn(`[jobs] stale lock on ${jobId} (age ${Math.round(age / 1000)}s) — force-claiming`);
+  }
   return updateJob(jobId, { processing: true });
 }
 
