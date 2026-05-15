@@ -488,20 +488,45 @@ async function stageHeygenCreate(job: JobState): Promise<JobState> {
         `Supported: ${supported.join(", ") || "(none)"}`
     );
   }
-  const voiceId = job.input.voiceId ?? look.default_voice_id ?? FALLBACK_VOICE_ID;
-  const created = await createVideo({
-    avatarId: job.input.avatarId,
-    script: job.scriptText,
-    voiceId,
-    engine,
-    resolution: "1080p",
-    aspectRatio: "16:9",
-    title: `LeadFlow pipeline ${job.jobId}`,
-    // HeyGen idempotency: same jobId + same payload returns the same video
-    // instead of creating a new one. This is the only layer that bills $0
-    // for duplicates — the in-handler re-read and lock above are best-effort.
-    callbackId: job.jobId,
-  });
+  const preferredVoiceId = job.input.voiceId ?? look.default_voice_id ?? FALLBACK_VOICE_ID;
+
+  // Some avatars (e.g. Leos) have a default_voice_id that HeyGen no longer
+  // honors — they return "Voice not found" at create-time. Retry once with
+  // the known-good fallback voice rather than failing the whole pipeline.
+  async function tryCreate(voiceId: string) {
+    return createVideo({
+      avatarId: job.input.avatarId,
+      script: job.scriptText!,
+      voiceId,
+      engine,
+      resolution: "1080p",
+      aspectRatio: "16:9",
+      title: `LeadFlow pipeline ${job.jobId}`,
+      // HeyGen idempotency: same jobId + same payload returns the same video
+      // instead of creating a new one. This is the only layer that bills $0
+      // for duplicates — the in-handler re-read and lock above are best-effort.
+      callbackId: job.jobId,
+    });
+  }
+  let created;
+  let voiceId = preferredVoiceId;
+  try {
+    created = await tryCreate(preferredVoiceId);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    const looksLikeBadVoice =
+      err instanceof HeyGenError && /voice_id|voice not found/i.test(msg);
+    if (looksLikeBadVoice && preferredVoiceId !== FALLBACK_VOICE_ID) {
+      console.warn(
+        `[orchestrator] HeyGen rejected voice ${preferredVoiceId} for avatar ${job.input.avatarId}, retrying with FALLBACK_VOICE_ID`
+      );
+      voiceId = FALLBACK_VOICE_ID;
+      created = await tryCreate(FALLBACK_VOICE_ID);
+    } else {
+      throw err;
+    }
+  }
+  void voiceId; // bookkeeping; final voiceId not stored on the job today
   return await writeJob({
     ...job,
     heygenVideoId: created.video_id,
