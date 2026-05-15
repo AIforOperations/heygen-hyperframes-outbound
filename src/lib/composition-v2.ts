@@ -5,6 +5,7 @@ import path from "node:path";
 import { CURATED_AVATARS } from "./avatars";
 import type { Lead } from "./scrape";
 import { collectCompositionFiles, type SandboxFile } from "./composition-files";
+import { generateScenePlan } from "./planner";
 // Static relative import — Next.js / Turbopack can resolve this at build
 // time. The .mjs uses Ajv internally; that's why we added ajv + ajv-formats
 // to package.json. compileComposition still reads compositions/registry.json
@@ -48,6 +49,7 @@ export interface CompositionV2Input {
   senderName: string;
   senderCompany: string;
   scriptText?: string;
+  offer?: string;
 }
 
 export async function buildCompositionV2(input: CompositionV2Input): Promise<SandboxFile[]> {
@@ -59,19 +61,39 @@ export async function buildCompositionV2(input: CompositionV2Input): Promise<San
   // composition's assets/ dir.
   await fs.writeFile(avatarMp4Path, input.mp4);
 
-  // Build the plan. Three scenes: intro → headline-pull → cta-card. Total
-  // duration matches the HeyGen video duration so the composition timeline
-  // lines up with avatar audio.
-  const plan = buildPlanFromLead({
-    jobId: input.jobId,
-    duration: input.duration,
-    avatarId: input.avatarId,
-    avatarMp4Path,
-    lead: input.lead,
-    senderName: input.senderName,
-    senderCompany: input.senderCompany,
-    scriptText: input.scriptText,
-  });
+  // Build the plan. Prefer Claude-generated (smarter scene selection,
+  // grounded variables); fall back to the deterministic 3-scene template
+  // if Claude errors or returns invalid JSON.
+  const avatar = CURATED_AVATARS.find((a) => a.id === input.avatarId);
+  const crop = avatar?.crop ?? { positionY: "30%", scale: 1.0, originY: "30%" };
+
+  let plan: unknown;
+  try {
+    plan = await generateScenePlan({
+      jobId: input.jobId,
+      duration: input.duration,
+      avatarId: input.avatarId,
+      avatarVideoPath: avatarMp4Path,
+      avatarCrop: crop,
+      lead: input.lead,
+      senderName: input.senderName,
+      senderCompany: input.senderCompany,
+      offer: input.offer ?? "",
+      scriptText: input.scriptText ?? "",
+    });
+  } catch (err) {
+    console.warn("[composition-v2] Claude planner failed, falling back to template:", err instanceof Error ? err.message : err);
+    plan = buildPlanFromLead({
+      jobId: input.jobId,
+      duration: input.duration,
+      avatarId: input.avatarId,
+      avatarMp4Path,
+      lead: input.lead,
+      senderName: input.senderName,
+      senderCompany: input.senderCompany,
+      scriptText: input.scriptText,
+    });
+  }
 
   // Invoke the compiler. `repoRoot` tells it where to find
   // compositions/registry.json + scenes/ + _shared/ at runtime. On Vercel
