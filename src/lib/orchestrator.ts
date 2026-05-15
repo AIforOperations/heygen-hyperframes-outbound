@@ -319,26 +319,37 @@ export async function runPipeline(
 }
 
 // ============================================================================
-// ASYNC pipeline — split into two functions so the work survives the
-// Vercel 300s function cap.
+// ASYNC pipeline — split per-stage so the frontend sees each stage advance
+// individually as it polls.
 //
-//   1. startPipelineAsync()       (POST /api/generate)
-//      Runs scrape + script (sync, ~30s), kicks off HeyGen (returns immediately
-//      with a video_id), persists job to Blob. Returns jobId.
+//   POST /api/generate
+//     → startPipelineAsync(): create job at stage="scrape", return immediately.
+//       The HTTP response is fast (~200ms).
 //
-//   2. progressPipelineAsync()    (GET /api/generate?jobId=…)
-//      Reads job. If HeyGen still rendering, polls one tick and returns state.
-//      If HeyGen JUST completed, runs transcribe + compose + render inline
-//      (~40-50s, fits 300s), persists outputUrl, returns done state.
+//   GET /api/generate?jobId=X    (frontend polls every ~3s)
+//     → progressPipelineAsync(): claims a lock, runs the ONE stage matching
+//       the current job.stage, writes the updated state, returns it. Each
+//       poll advances by exactly one logical stage.
 //
-// The frontend polls every 5-10s. The poll that catches HeyGen-completed is
-// the one that does the heavy post-work; subsequent polls are no-ops.
+//   Stage progression:
+//     scrape → script → heygen-create → heygen-poll (×N) → transcribe → done
+//   The transcribe tick bundles transcribe + compose + render (~50s, fits
+//   the 300s function cap).
+//
+// Concurrency: a `processing: true` flag on the job acts as a lock. If two
+// concurrent GETs from the same user race, the second one returns the
+// current state without re-running the stage.
+//
+// Why per-stage (and not multi-write in one call): Vercel Blob's CDN had
+// us reading stale state inside a single function when we wrote multiple
+// times in quick succession, clobbering earlier writes. With one write per
+// invocation we always see the freshest state when the next poll arrives.
 // ============================================================================
 
 import {
   createJob,
   readJob,
-  updateJob,
+  writeJob,
   tryClaimProcessing,
   releaseProcessing,
   type JobState,
@@ -348,162 +359,188 @@ const ASYNC_DEFAULT_ENGINE: AvatarEngine = "avatar_v";
 const ASYNC_DEFAULT_LENGTH_SECONDS = 30;
 
 /**
- * Start the pipeline. Runs scrape + script synchronously, kicks off HeyGen,
- * persists state, returns the job (with jobId for polling).
- *
- * Total time: ~30-60s for scrape + script + HeyGen createVideo. Fits 300s cap.
+ * Create a job at stage="scrape" and return immediately. The actual work
+ * happens on subsequent GET polls.
  */
 export async function startPipelineAsync(
   input: OrchestratorInput
 ): Promise<JobState> {
   const engine = input.engine ?? ASYNC_DEFAULT_ENGINE;
   const lengthSeconds = input.lengthSeconds ?? ASYNC_DEFAULT_LENGTH_SECONDS;
-  const job = await createJob({ ...input, engine, lengthSeconds });
-
-  try {
-    // Stage 1: scrape
-    let t = Date.now();
-    const scrape = await scrapeLead(input.input);
-    await updateJob(job.jobId, {
-      stage: "script",
-      lead: scrape.lead,
-      stages: { scrape: { ms: Date.now() - t } },
-    });
-
-    // Stage 2: script
-    t = Date.now();
-    const scriptResult = await generateScript({
-      lead: scrape.lead,
-      offer: input.offer,
-      senderName: input.senderName,
-      senderCompany: input.senderCompany,
-      tonality: input.tonality,
-      model: input.scriptModel,
-      lengthSeconds,
-    });
-    await updateJob(job.jobId, {
-      stage: "heygen",
-      scriptText: scriptResult.script,
-      wordCount: scriptResult.wordCount,
-      estimatedSeconds: scriptResult.estimatedSeconds,
-      stages: { script: { ms: Date.now() - t } },
-    });
-
-    // Stage 3 (kickoff only): HeyGen createVideo
-    t = Date.now();
-    const look = await getAvatarLook(input.avatarId);
-    const supported = look.supported_api_engines ?? [];
-    if (!supported.includes(engine)) {
-      throw new Error(
-        `Avatar "${look.name}" does not support engine "${engine}". ` +
-          `Supported: ${supported.join(", ") || "(none)"}`
-      );
-    }
-    const voiceId = input.voiceId ?? look.default_voice_id ?? FALLBACK_VOICE_ID;
-    const created = await createVideo({
-      avatarId: input.avatarId,
-      script: scriptResult.script,
-      voiceId,
-      engine,
-      resolution: "1080p",
-      aspectRatio: "16:9",
-      title: `LeadFlow pipeline ${job.jobId}`,
-    });
-    return await updateJob(job.jobId, {
-      stage: "heygen",
-      heygenVideoId: created.video_id,
-      heygenStatus: created.status,
-      stages: { heygenKickoff: { ms: Date.now() - t } },
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "unknown error";
-    return await updateJob(job.jobId, {
-      stage: "error",
-      status: "failed",
-      error: message,
-    });
-  }
+  return await createJob({ ...input, engine, lengthSeconds });
 }
 
 /**
- * Advance the pipeline one tick. Frontend calls this on every poll.
+ * Advance the pipeline by one stage. Called from GET /api/generate.
  *
- * Behavior by stage:
- *   - heygen      → check HeyGen status; if completed, run post-render stages
- *   - done/error  → return state, no-op
- *   - earlier     → return state (start should have advanced past these)
- *
- * Race protection: tries to claim a `processing` lock. If another caller is
- * already advancing, returns the current state immediately.
+ * The lock is acquired before dispatching to a stage handler; on completion
+ * (or error) it's released. Per-stage handlers do their work in memory and
+ * `writeJob` exactly once with the new full state.
  */
 export async function progressPipelineAsync(jobId: string): Promise<JobState | null> {
   const initial = await readJob(jobId);
   if (!initial) return null;
   if (initial.status === "complete" || initial.status === "failed") return initial;
 
-  // Race guard for concurrent polls from the same user.
   const claimed = await tryClaimProcessing(jobId);
-  if (!claimed) return initial; // already advancing in another caller
+  if (!claimed) return initial;
 
   try {
     return await advanceStage(claimed);
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown error";
-    return await updateJob(jobId, {
+    const errored: JobState = {
+      ...claimed,
       stage: "error",
       status: "failed",
       processing: false,
       error: message,
-    });
+    };
+    return await writeJob(errored);
   } finally {
-    // Best-effort release in case advanceStage didn't update processing
     await releaseProcessing(jobId).catch(() => {});
   }
 }
 
 async function advanceStage(job: JobState): Promise<JobState> {
-  if (job.stage !== "heygen") {
-    // Earlier stages should have been handled in startPipelineAsync; if we
-    // see one here it likely means startPipelineAsync errored — just return.
-    return job;
+  switch (job.stage) {
+    case "scrape":
+      return await stageScrape(job);
+    case "script":
+      return await stageScript(job);
+    case "heygen":
+      return job.heygenVideoId
+        ? await stageHeygenPoll(job)
+        : await stageHeygenCreate(job);
+    case "transcribe":
+    case "compose":
+    case "render":
+      return await stagePostHeygen(job);
+    case "done":
+    case "error":
+      return job;
+    default:
+      return job;
   }
-  if (!job.heygenVideoId) {
-    throw new Error("Job in heygen stage but heygenVideoId missing");
-  }
+}
 
-  // Poll HeyGen once.
+async function stageScrape(job: JobState): Promise<JobState> {
+  const t = Date.now();
+  const scrape = await scrapeLead(job.input.input);
+  return await writeJob({
+    ...job,
+    stage: "script",
+    lead: scrape.lead,
+    processing: false,
+    stages: { ...job.stages, scrape: { ms: Date.now() - t } },
+  });
+}
+
+async function stageScript(job: JobState): Promise<JobState> {
+  if (!job.lead) throw new Error("lead missing for script stage");
+  const t = Date.now();
+  const scriptResult = await generateScript({
+    lead: job.lead,
+    offer: job.input.offer,
+    senderName: job.input.senderName,
+    senderCompany: job.input.senderCompany,
+    tonality: job.input.tonality,
+    model: job.input.scriptModel,
+    lengthSeconds: job.input.lengthSeconds,
+  });
+  return await writeJob({
+    ...job,
+    stage: "heygen",
+    scriptText: scriptResult.script,
+    wordCount: scriptResult.wordCount,
+    estimatedSeconds: scriptResult.estimatedSeconds,
+    processing: false,
+    stages: { ...job.stages, script: { ms: Date.now() - t } },
+  });
+}
+
+async function stageHeygenCreate(job: JobState): Promise<JobState> {
+  if (!job.scriptText) throw new Error("scriptText missing for heygen-create");
+  const t = Date.now();
+  const engine = job.input.engine ?? ASYNC_DEFAULT_ENGINE;
+  const look = await getAvatarLook(job.input.avatarId);
+  const supported = look.supported_api_engines ?? [];
+  if (!supported.includes(engine)) {
+    throw new Error(
+      `Avatar "${look.name}" does not support engine "${engine}". ` +
+        `Supported: ${supported.join(", ") || "(none)"}`
+    );
+  }
+  const voiceId = job.input.voiceId ?? look.default_voice_id ?? FALLBACK_VOICE_ID;
+  const created = await createVideo({
+    avatarId: job.input.avatarId,
+    script: job.scriptText,
+    voiceId,
+    engine,
+    resolution: "1080p",
+    aspectRatio: "16:9",
+    title: `LeadFlow pipeline ${job.jobId}`,
+  });
+  return await writeJob({
+    ...job,
+    heygenVideoId: created.video_id,
+    heygenStatus: created.status,
+    processing: false,
+    stages: { ...job.stages, heygenCreate: { ms: Date.now() - t } },
+  });
+}
+
+async function stageHeygenPoll(job: JobState): Promise<JobState> {
+  if (!job.heygenVideoId) throw new Error("heygenVideoId missing");
   const v = await getVideo(job.heygenVideoId);
   if (v.status === "failed") {
-    return await updateJob(job.jobId, {
+    return await writeJob({
+      ...job,
       stage: "error",
       status: "failed",
       heygenStatus: v.status,
+      processing: false,
       error: `HeyGen render failed: ${v.failure_message ?? v.failure_code ?? "unknown"}`,
     });
   }
   if (v.status !== "completed") {
-    // Still rendering — just update heartbeat fields and return.
-    return await updateJob(job.jobId, { heygenStatus: v.status });
+    return await writeJob({
+      ...job,
+      heygenStatus: v.status,
+      processing: false,
+    });
   }
-
-  // HeyGen done. Run the rest of the pipeline inline.
+  // HeyGen done — advance to transcribe stage; post-work runs on next poll.
   if (!v.video_url || !v.duration) {
     throw new Error("HeyGen completed but missing video_url or duration");
   }
-
-  await updateJob(job.jobId, {
+  return await writeJob({
+    ...job,
     stage: "transcribe",
     heygenVideoUrl: v.video_url,
     heygenDuration: v.duration,
     heygenStatus: v.status,
+    processing: false,
   });
+}
 
-  // Download MP4 once, reuse for both transcribe and compose.
-  let t = Date.now();
-  const audio = await extractAudioFromVideoUrl(v.video_url);
-  const mp4 = audio.buffer;
+/**
+ * Post-HeyGen bundle: transcribe + compose + render + upload. ~50s total.
+ * Fits within one 300s function call. We accept that the UI only sees one
+ * transition here ("transcribe"/"compose"/"render" → "done") because
+ * splitting them would add 3 extra poll round-trips for ~50s of work.
+ */
+async function stagePostHeygen(job: JobState): Promise<JobState> {
+  if (!job.heygenVideoUrl || !job.heygenDuration) {
+    throw new Error("heygen video URL/duration missing for post-heygen stage");
+  }
+
+  let working: JobState = { ...job };
 
   // Transcribe
+  let t = Date.now();
+  const audio = await extractAudioFromVideoUrl(job.heygenVideoUrl);
+  const mp4 = audio.buffer;
   const audioBlob = new Blob([Uint8Array.from(audio.buffer)], { type: audio.contentType });
   const transcription = await transcribeAudio({
     audio: audioBlob,
@@ -511,24 +548,26 @@ async function advanceStage(job: JobState): Promise<JobState> {
     contentType: audio.contentType,
     timestampsGranularity: "word",
   });
-  await updateJob(job.jobId, {
+  working = {
+    ...working,
     stage: "compose",
     transcript: transcription.text,
     wordTimestamps: transcription.words,
-    stages: { transcribe: { ms: Date.now() - t } },
-  });
+    stages: { ...working.stages, transcribe: { ms: Date.now() - t } },
+  };
 
   // Compose
   t = Date.now();
   const files = buildCompositionFiles({
     mp4,
-    duration: v.duration,
+    duration: job.heygenDuration,
     avatarId: job.input.avatarId,
   });
-  await updateJob(job.jobId, {
+  working = {
+    ...working,
     stage: "render",
-    stages: { compose: { ms: Date.now() - t } },
-  });
+    stages: { ...working.stages, compose: { ms: Date.now() - t } },
+  };
 
   // Render + upload
   t = Date.now();
@@ -544,14 +583,13 @@ async function advanceStage(job: JobState): Promise<JobState> {
     }
   );
 
-  // Done
-  const final = await updateJob(job.jobId, {
+  return await writeJob({
+    ...working,
     stage: "done",
     status: "complete",
     completedAt: new Date().toISOString(),
     processing: false,
     outputUrl: blob.url,
-    stages: { render: { ms: Date.now() - t } },
+    stages: { ...working.stages, render: { ms: Date.now() - t } },
   });
-  return final;
 }

@@ -285,6 +285,28 @@ export default function Home() {
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
   const [outputUrl, setOutputUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Latest job state from the polling loop. Used to render real-data
+  // step summaries (lead name, script word count, render duration, etc.).
+  type JobStateLite = {
+    stage?: string;
+    status?: string;
+    lead?: {
+      firstName?: string | null;
+      fullName?: string | null;
+      role?: string | null;
+      company?: { name?: string | null; websiteUrl?: string | null } | null;
+      headline?: string | null;
+      website?: { heroText?: string | null } | null;
+    } | null;
+    scriptText?: string | null;
+    wordCount?: number | null;
+    estimatedSeconds?: number | null;
+    heygenStatus?: string | null;
+    heygenDuration?: number | null;
+    heygenVideoUrl?: string | null;
+    outputUrl?: string | null;
+  };
+  const [jobState, setJobState] = useState<JobStateLite | null>(null);
 
   // ---------- Gallery (dynamic) ----------
   const [galleryEntries, setGalleryEntries] = useState<GalleryEntry[]>(GALLERY);
@@ -361,6 +383,7 @@ export default function Home() {
     setFinishedAt(null);
     setOutputUrl(null);
     setErrorMsg(null);
+    setJobState(null);
     setStepStatuses(PIPELINE_STEPS.map(() => "pending"));
 
     try {
@@ -397,12 +420,14 @@ export default function Home() {
         );
       }
       const jobId: string = data.jobId;
+      setJobState(data.state);
       setStepStatuses(stageToSteps(data.state.stage));
 
-      // Poll until complete or failed. HeyGen Avatar V can take 5-8 min;
-      // generous max (15 min) covers worst-case queueing.
-      const POLL_INTERVAL_MS = 7000;
-      const MAX_POLLS = 130;
+      // Poll fast (3s) so each per-stage advance is visible. HeyGen render
+      // dominates total wall time (~3-5 min on Avatar V for 30s output) —
+      // most polls are quick reads of the heygen status. Cap at ~15 min total.
+      const POLL_INTERVAL_MS = 3000;
+      const MAX_POLLS = 300;
       for (let i = 0; i < MAX_POLLS; i++) {
         await new Promise((res) => setTimeout(res, POLL_INTERVAL_MS));
         const pr = await fetch(`/api/generate?jobId=${encodeURIComponent(jobId)}`);
@@ -413,6 +438,7 @@ export default function Home() {
           );
         }
         const state = pd.state;
+        setJobState(state);
         setStepStatuses(stageToSteps(state.stage));
         if (state.status === "complete" && state.outputUrl) {
           setOutputUrl(state.outputUrl);
@@ -478,19 +504,48 @@ export default function Home() {
 
   const engineLabel = engine === "avatar_v" ? "Avatar V" : "Avatar IV";
 
-  const stepSummary = (i: number) => {
+  // Real-data summaries pulled from the live job state. Each falls back to
+  // a generic line if its source field isn't populated yet.
+  const stepSummary = (i: number): string => {
     const targetLabel = inputValue.trim() || "the prospect";
     switch (PIPELINE_STEPS[i].id) {
-      case "scrape":
-        return `Found Jane Smith, VP Marketing — Acme Corp (${targetLabel})`;
-      case "stat":
-        return "Angle: homepage loads in 4.2s vs 1.8s industry benchmark";
-      case "script":
-        return "Wrote 78-word script, ~30s spoken";
-      case "avatar":
-        return `Rendered ${avatar.label} via ${engineLabel}, 1080p`;
-      case "compose":
-        return "Composed 4 hyperframes synced to speech beats";
+      case "scrape": {
+        const lead = jobState?.lead;
+        if (lead?.fullName) {
+          const role = lead.role ? `${lead.role}` : "decision-maker";
+          const company = lead.company?.name ?? targetLabel;
+          return `Found ${lead.fullName}, ${role} — ${company}`;
+        }
+        return `Found the decision-maker at ${targetLabel}`;
+      }
+      case "stat": {
+        const lead = jobState?.lead;
+        const hero = lead?.website?.heroText;
+        if (hero) return `Angle: ${hero}`;
+        if (lead?.headline) return `Angle: ${lead.headline}`;
+        return "Found the angle from their site and recent activity";
+      }
+      case "script": {
+        const wc = jobState?.wordCount;
+        const sec = jobState?.estimatedSeconds;
+        if (wc && sec) return `Wrote ${wc}-word script, ~${sec}s spoken`;
+        if (wc) return `Wrote ${wc}-word script`;
+        return "Wrote the personalized script";
+      }
+      case "avatar": {
+        const dur = jobState?.heygenDuration;
+        const hs = jobState?.heygenStatus;
+        if (dur) return `Rendered ${avatar.label} via ${engineLabel}, ${Math.round(dur)}s 1080p`;
+        if (hs === "processing") return `Rendering ${avatar.label} via ${engineLabel}…`;
+        if (hs === "waiting" || hs === "pending") return `Queued ${avatar.label} render on HeyGen`;
+        return `Rendering ${avatar.label} via ${engineLabel}`;
+      }
+      case "compose": {
+        if (jobState?.outputUrl) {
+          return "Composed HyperFrames overlays — final video ready";
+        }
+        return "Composing HyperFrames overlays + transcript timing";
+      }
       default:
         return "";
     }
@@ -890,7 +945,7 @@ export default function Home() {
       </section>
 
       {/* ===== Pipeline + Result ===== */}
-      {(running || finishedAt) && (
+      {(running || finishedAt || errorMsg || jobState) && (
         <section className="relative z-10 mx-auto max-w-5xl px-6 pb-10">
           <div className="glass rounded-3xl p-6 md:p-8">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -984,6 +1039,42 @@ export default function Home() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Intermediate raw HeyGen preview — shown once HeyGen finishes
+                but before HyperFrames composition completes, so the user can
+                eyeball the avatar while the final render is still running. */}
+            {jobState?.heygenVideoUrl && !outputUrl && (
+              <div className="mt-6 rounded-2xl border border-[var(--border-token-strong)] bg-[var(--surface)] p-4 md:p-6">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="text-xs uppercase tracking-wide text-muted">
+                    Avatar render (preview) · finalizing composition
+                  </div>
+                  <a
+                    href={jobState.heygenVideoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-[var(--primary)] hover:underline"
+                  >
+                    Open in new tab ↗
+                  </a>
+                </div>
+                <div
+                  className="relative aspect-video overflow-hidden rounded-xl"
+                  style={{
+                    background:
+                      "radial-gradient(ellipse at 30% 30%, rgba(248,113,113,0.30), transparent 60%), #0a0a0c",
+                  }}
+                >
+                  <video
+                    src={jobState.heygenVideoUrl}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
               </div>
             )}
 

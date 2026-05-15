@@ -132,6 +132,20 @@ export async function updateJob(
   return next;
 }
 
+/**
+ * Direct write — caller holds the authoritative state in memory, no re-read.
+ *
+ * Use this from the orchestrator. It sidesteps Blob's CDN cache problem:
+ * sequential read-modify-write would re-read a stale snapshot and clobber
+ * unflushed fields. With writeJob the caller mutates a local object and
+ * pushes the full state in one shot.
+ */
+export async function writeJob(job: JobState): Promise<JobState> {
+  const next: JobState = { ...job, updatedAt: new Date().toISOString() };
+  await persist(next);
+  return next;
+}
+
 /** Try to claim the processing lock. Returns true if claimed, false if
  * another caller is already advancing this job. */
 export async function tryClaimProcessing(jobId: string): Promise<JobState | null> {
