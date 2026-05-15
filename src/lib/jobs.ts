@@ -102,7 +102,11 @@ export async function readJob(jobId: string): Promise<JobState | null> {
   try {
     // Blob lookup by exact pathname is via head().
     const meta = await head(jobKey(jobId));
-    const resp = await fetch(meta.url);
+    // Cache-bust: Vercel Blob URLs go through a CDN with a 30-day default
+    // Cache-Control. Multiple sequential updateJob() calls inside a single
+    // function would otherwise read stale state and clobber prior writes.
+    const url = `${meta.url}${meta.url.includes("?") ? "&" : "?"}_t=${Date.now()}`;
+    const resp = await fetch(url, { cache: "no-store" });
     if (!resp.ok) return null;
     return (await resp.json()) as JobState;
   } catch {
@@ -179,5 +183,9 @@ async function persist(job: JobState): Promise<void> {
     contentType: "application/json",
     addRandomSuffix: false,
     allowOverwrite: true,
+    // 1s max-age. Job state changes every few seconds during a pipeline run;
+    // we must not let the CDN serve a stale snapshot to subsequent
+    // readJob() callers in the same function chain.
+    cacheControlMaxAge: 1,
   });
 }
