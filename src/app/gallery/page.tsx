@@ -112,13 +112,7 @@ export default function GalleryPage() {
       {/* Footer */}
       <footer className="border-t border-[var(--border-token)] py-8 text-center text-xs text-muted">
         <div className="mx-auto max-w-7xl px-6">
-          Built for the HeyGen hackathon · May 2026 ·{" "}
-          <a
-            href="https://aiforoperations.io"
-            className="text-foreground/80 hover:text-foreground"
-          >
-            AIforOperations
-          </a>
+          LeadFlow · Built for the HeyGen hackathon · May 2026
         </div>
       </footer>
     </main>

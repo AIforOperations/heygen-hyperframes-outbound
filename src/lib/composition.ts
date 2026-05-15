@@ -46,7 +46,7 @@ function defaultCards(duration: number): CompositionCard[] {
       id: "card-intro",
       start: 0.0,
       end: 4.0,
-      eyebrow: "AIforOperations",
+      eyebrow: "LeadFlow",
       headline: "Personalized outbound,",
       headline2: "on autopilot.",
     },
@@ -101,7 +101,7 @@ function buildHtml(opts: {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>AIforOperations · HyperFrames demo</title>
+  <title>LeadFlow · HyperFrames demo</title>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     :root {
@@ -173,9 +173,8 @@ function buildHtml(opts: {
       gap: 4px;
       align-items: baseline;
     }
-    .wordmark .ai { color: var(--text); }
-    .wordmark .for { color: var(--primary-light); }
-    .wordmark .ops { color: var(--primary); }
+    .wordmark .lead { color: var(--text); }
+    .wordmark .flow { color: var(--primary); }
     .progress {
       position: absolute;
       left: 80px;
@@ -270,7 +269,7 @@ function buildHtml(opts: {
       data-start="0"
       data-duration="${durFixed}"
       data-track-index="2">
-      <span class="ai">AI</span><span class="for">for</span><span class="ops">Operations</span>
+      <span class="lead">Lead</span><span class="flow">Flow</span>
     </div>
 
     <div id="right-col" class="right-col clip"

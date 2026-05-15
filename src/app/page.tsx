@@ -59,7 +59,7 @@ type Avatar = {
 const FALLBACK_AVATAR: Avatar = {
   id: "ari-fallback",
   label: "Ari",
-  style: "Founder, AIforOperations",
+  style: "Founder, LeadFlow",
   voiceId: "01f98ed43e6140349f47dbd37a416827",
   voiceName: "Cody (M)",
   fallbackColor: "#DC2626",
@@ -608,7 +608,7 @@ export default function Home() {
                 <input
                   value={senderCompany}
                   onChange={(e) => setSenderCompany(e.target.value)}
-                  placeholder="AIforOperations"
+                  placeholder="LeadFlow"
                   className="w-full bg-transparent text-sm outline-none placeholder:text-muted/60"
                 />
               </div>
@@ -1063,13 +1063,7 @@ export default function Home() {
       {/* ===== Footer ===== */}
       <footer className="border-t border-[var(--border-token)] py-8 text-center text-xs text-muted">
         <div className="mx-auto max-w-7xl px-6">
-          Built for the HeyGen hackathon · May 2026 ·{" "}
-          <a
-            href="https://aiforoperations.io"
-            className="text-foreground/80 hover:text-foreground"
-          >
-            AIforOperations
-          </a>
+          LeadFlow · Built for the HeyGen hackathon · May 2026
         </div>
       </footer>
     </main>
