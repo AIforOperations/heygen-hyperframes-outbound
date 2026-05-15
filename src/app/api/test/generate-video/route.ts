@@ -90,18 +90,50 @@ export async function POST(req: Request) {
     }
 
     const engine = body.engine ?? "avatar_v";
+    if (engine !== "avatar_v" && engine !== "avatar_iv") {
+      return NextResponse.json(
+        { error: `Invalid engine "${engine}". Use "avatar_v" or "avatar_iv".` },
+        { status: 400 }
+      );
+    }
     const pollTimeoutMs = body.pollTimeoutMs ?? 10 * 60 * 1000;
 
-    // Stage 1: resolve voice from avatar's default (if not overridden)
+    // Stage 1: resolve voice + validate the avatar supports the chosen engine.
+    // We fetch the avatar look once and reuse it for both decisions.
     let t = Date.now();
-    let voiceId = body.voiceId;
-    if (!voiceId) {
-      const look = await getAvatarLook(body.avatarId);
-      voiceId = look.default_voice_id ?? FALLBACK_VOICE_ID;
+    const look = await getAvatarLook(body.avatarId);
+
+    const supported = look.supported_api_engines ?? [];
+    if (!supported.includes(engine)) {
+      return NextResponse.json(
+        {
+          error: `Avatar "${look.name}" does not support engine "${engine}".`,
+          avatarId: body.avatarId,
+          requestedEngine: engine,
+          supportedEngines: supported,
+          hint:
+            supported.length > 0
+              ? `Try engine: "${supported[0]}" or pick a different avatar.`
+              : "This avatar isn't API-accessible. Pick one from /api/avatars.",
+        },
+        { status: 400 }
+      );
     }
+
+    const voiceId = body.voiceId ?? look.default_voice_id ?? FALLBACK_VOICE_ID;
     stages.resolveVoice = {
       ms: Date.now() - t,
-      result: { voiceId, source: body.voiceId ? "request" : "avatar_default" },
+      result: {
+        voiceId,
+        source: body.voiceId
+          ? "request"
+          : look.default_voice_id
+            ? "avatar_default"
+            : "fallback",
+        engine,
+        avatar: look.name,
+        avatarSupports: supported,
+      },
     };
 
     // Stage 2: create video with script + voice. HeyGen synthesizes speech
@@ -237,6 +269,7 @@ export async function POST(req: Request) {
       thumbnailUrl: final.thumbnail_url,
       duration: final.duration,
       voiceId,
+      engine,
       transcript,
       wordTimestamps,
       savedPaths,
