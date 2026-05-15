@@ -40,7 +40,7 @@ export const CURATED_AVATARS: CuratedAvatar[] = [
   {
     id: "c3df4083b7dd49ba9c34bd0d43738a4c",
     label: "Ari",
-    style: "Founder, AIforOperations",
+    style: "Founder · Tech",
     voiceId: "422d037290464f3f9b0ce4a049dd65c3",
     voiceName: "Avatar default",
     fallbackColor: "#DC2626",
@@ -50,7 +50,7 @@ export const CURATED_AVATARS: CuratedAvatar[] = [
   {
     id: "Annie_Desk_Sitting_Front_2_public",
     label: "Annie",
-    style: "Sitting · desk",
+    style: "Account Executive",
     voiceId: "330290724a1b470fb63153f34d4c0183",
     voiceName: "Avatar default",
     fallbackColor: "#F87171",
@@ -59,7 +59,7 @@ export const CURATED_AVATARS: CuratedAvatar[] = [
   {
     id: "Brandon_Office_Sitting_Front_public",
     label: "Brandon",
-    style: "Sitting · office",
+    style: "Enterprise Sales",
     voiceId: "513b14b431b64a578c467c480dd0a9c3",
     voiceName: "Avatar default",
     fallbackColor: "#1f3a5f",
@@ -68,7 +68,7 @@ export const CURATED_AVATARS: CuratedAvatar[] = [
   {
     id: "Masha_sitting_office_front",
     label: "Masha",
-    style: "Sitting · office",
+    style: "Strategy Lead",
     voiceId: "4e5c7735901b4481ac6604de3aea6f72",
     voiceName: "Avatar default",
     fallbackColor: "#991B1B",
@@ -77,7 +77,7 @@ export const CURATED_AVATARS: CuratedAvatar[] = [
   {
     id: "Leos_sitting_office_front",
     label: "Leos",
-    style: "Sitting · office",
+    style: "Solutions Engineer",
     voiceId: "30bd8b4be4ef40f0ae3ab74a4a0d789e",
     voiceName: "Avatar default",
     fallbackColor: "#374151",
@@ -86,7 +86,7 @@ export const CURATED_AVATARS: CuratedAvatar[] = [
   {
     id: "Joel_standing_mountain_front",
     label: "Joel",
-    style: "Standing · mountain",
+    style: "Field CEO",
     voiceId: "54a3995cacda4b2b8198de75327fcefa",
     voiceName: "Avatar default",
     fallbackColor: "#7c1d6f",
@@ -95,7 +95,7 @@ export const CURATED_AVATARS: CuratedAvatar[] = [
   {
     id: "Leszek_standing_outdoorbusiness_front",
     label: "Leszek",
-    style: "Standing · outdoor",
+    style: "Senior Director",
     voiceId: "cc6a378bd95c4421b9a2fcf1312c6ddb",
     voiceName: "Avatar default",
     fallbackColor: "#5b21b6",

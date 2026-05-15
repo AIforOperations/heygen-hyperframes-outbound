@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Personalized outbound, on autopilot — AIforOperations",
+  title: "LeadFlow — Personalized Outbound Video",
   description:
-    "Drop in a LinkedIn URL or a company name. We scrape, analyze, write the script, and ship a personalized 30-second video. Built on HeyGen Avatar V + HyperFrames.",
+    "Drop in a LinkedIn URL or a company name. LeadFlow researches the prospect, writes the script, and ships a personalized 30-second video. Built on HeyGen Avatar V + HyperFrames.",
 };
 
 export default function RootLayout({

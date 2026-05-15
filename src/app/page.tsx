@@ -1,21 +1,27 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
+  AlertCircle,
   ArrowRight,
   Building2,
   Check,
   ChevronDown,
   Cpu,
   FileText,
+  Image as ImageIcon,
   Loader2,
   Mail,
+  Paperclip,
   Play,
   Search,
   Sparkles,
   Video,
   Wand2,
+  X,
 } from "lucide-react";
+import { GALLERY } from "@/lib/gallery";
 
 function Linkedin({ className }: { className?: string }) {
   return (
@@ -124,44 +130,28 @@ const PIPELINE_STEPS = [
   { id: "compose", label: "Compose HyperFrames", icon: Wand2, duration: 1800 },
 ];
 
-const GALLERY = [
-  {
-    id: "g1",
-    name: "Jane Smith",
-    role: "VP Marketing",
-    company: "Acme Corp",
-    stat: "Homepage loads in 4.2s",
-    accent: "#DC2626",
-  },
-  {
-    id: "g2",
-    name: "David Chen",
-    role: "Head of Growth",
-    company: "Northwind Labs",
-    stat: "Hiring 11 SDRs, no marketing ops",
-    accent: "#F87171",
-  },
-  {
-    id: "g3",
-    name: "Maya Patel",
-    role: "COO",
-    company: "Forge & Co",
-    stat: "Still on Webflow at $5M ARR",
-    accent: "#991B1B",
-  },
-  {
-    id: "g4",
-    name: "Tom Reynolds",
-    role: "CRO",
-    company: "Bluetail",
-    stat: "Glassdoor 3.1 — culture cited",
-    accent: "#7c1d6f",
-  },
-];
-
 type StepStatus = "pending" | "active" | "done";
 
 const PROMPT_LIMIT = 1200;
+
+// ---------- Attachment limits (Claude API friendly) ----------
+const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2 MB per file
+const MAX_TOTAL_BYTES = 5 * 1024 * 1024; // 5 MB total
+const MAX_FILES = 4;
+const ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg"];
+const ALLOWED_HINT = "PDF, PNG, JPG · 2 MB each · 5 MB total";
+
+type Attachment = {
+  id: string;
+  file: File;
+  previewUrl?: string;
+};
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
 
 export default function Home() {
   // ---------- Avatar list + selection ----------
@@ -216,7 +206,74 @@ export default function Home() {
 
   const [inputMode, setInputMode] = useState<"linkedin" | "company">("linkedin");
   const [inputValue, setInputValue] = useState("");
+  const [senderCompany, setSenderCompany] = useState("");
   const [prompt, setPrompt] = useState("");
+
+  // ---------- Attachments ----------
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const totalAttachedBytes = attachments.reduce((s, a) => s + a.file.size, 0);
+
+  const handleFiles = (picked: FileList | null) => {
+    if (!picked || picked.length === 0) return;
+    setAttachError(null);
+    const next: Attachment[] = [...attachments];
+    const errors: string[] = [];
+    let running = totalAttachedBytes;
+
+    for (const file of Array.from(picked)) {
+      if (next.length >= MAX_FILES) {
+        errors.push(`Max ${MAX_FILES} files`);
+        break;
+      }
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        errors.push(`${file.name}: unsupported type (PDF, PNG, JPG only)`);
+        continue;
+      }
+      if (file.size > MAX_FILE_BYTES) {
+        errors.push(`${file.name}: ${formatBytes(file.size)} exceeds 2 MB cap`);
+        continue;
+      }
+      if (running + file.size > MAX_TOTAL_BYTES) {
+        errors.push(`${file.name}: would exceed 5 MB total`);
+        continue;
+      }
+      const previewUrl = file.type.startsWith("image/")
+        ? URL.createObjectURL(file)
+        : undefined;
+      next.push({
+        id: `${file.name}-${file.size}-${Date.now()}`,
+        file,
+        previewUrl,
+      });
+      running += file.size;
+    }
+
+    setAttachments(next);
+    if (errors.length) setAttachError(errors.join(" · "));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachments((curr) => {
+      const item = curr.find((a) => a.id === id);
+      if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      return curr.filter((a) => a.id !== id);
+    });
+    setAttachError(null);
+  };
+
+  // Clean up object URLs on unmount
+  useEffect(() => {
+    return () => {
+      attachments.forEach((a) => {
+        if (a.previewUrl) URL.revokeObjectURL(a.previewUrl);
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [engine, setEngine] = useState<"avatar_iv" | "avatar_v">("avatar_v");
 
@@ -277,14 +334,28 @@ export default function Home() {
 
   const completedCount = stepStatuses.filter((s) => s === "done").length;
   const progressPercent = (completedCount / PIPELINE_STEPS.length) * 100;
-  const canGenerate = inputValue.trim().length > 0 && prompt.trim().length > 0 && !running;
+
+  const voiceReady =
+    voiceMode === "templates" ? !!voiceTemplate : voiceCustom.trim().length > 0;
+
+  const canGenerate =
+    !running &&
+    inputValue.trim().length > 0 &&
+    senderCompany.trim().length > 0 &&
+    prompt.trim().length > 0 &&
+    voiceReady;
+
   const disabledReason = running
     ? "Running…"
     : !inputValue.trim()
       ? `Add a ${inputMode === "linkedin" ? "LinkedIn URL" : "company name"} first`
-      : !prompt.trim()
-        ? "Add a prompt — what should the video say?"
-        : "";
+      : !senderCompany.trim()
+        ? "Add your company name"
+        : !voiceReady
+          ? "Describe the brand voice"
+          : !prompt.trim()
+            ? "Add the purpose of the video"
+            : "";
 
   const engineLabel = engine === "avatar_v" ? "Avatar V" : "Avatar IV";
 
@@ -312,17 +383,17 @@ export default function Home() {
       {/* ===== Hero (compact) ===== */}
       <section className="relative">
         <div className="hero-glow" />
-        <div className="relative z-10 mx-auto max-w-6xl px-6 pt-12 pb-6 text-center md:pt-20 md:pb-10">
-          <div className="blur-in d-1 mb-5 inline-flex items-center gap-2 rounded-full border border-[var(--border-token)] bg-white/70 px-3 py-1 text-xs backdrop-blur">
+        <div className="relative z-10 mx-auto max-w-6xl px-6 pt-6 pb-4 text-center md:pt-10 md:pb-5">
+          <div className="blur-in d-1 mb-3 inline-flex items-center gap-2 rounded-full border border-[var(--border-token)] bg-white/70 px-3 py-1 text-xs backdrop-blur">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--primary)] opacity-60" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--primary)]" />
             </span>
-            <span className="font-medium text-foreground">AIforOperations</span>
+            <span className="font-medium text-foreground">LeadFlow</span>
             <span className="text-muted">·</span>
-            <span className="text-muted">HeyGen WTD · May 2026</span>
+            <span className="text-muted">HeyGen Hackathon · May 2026</span>
           </div>
-          <h1 className="blur-in d-2 text-5xl font-semibold leading-[1.02] tracking-tight md:text-7xl">
+          <h1 className="blur-in d-2 text-4xl font-semibold leading-[1.02] tracking-tight md:text-6xl">
             Personalized{" "}
             <span
               className="text-accent-gradient"
@@ -332,17 +403,18 @@ export default function Home() {
             </span>{" "}
             Video
           </h1>
-          <p className="blur-in d-3 mx-auto mt-5 max-w-xl text-base text-muted md:text-lg">
-            One custom video per prospect. At scale.
+          <p className="blur-in d-3 mx-auto mt-3 max-w-2xl text-sm text-muted md:text-base">
+            Feels like your analyst wrote it and you delivered it. Without
+            recording a thing.
           </p>
         </div>
       </section>
 
       {/* ===== Builder ===== */}
-      <section id="builder" className="relative z-10 mx-auto max-w-5xl px-6 pb-10">
-        <div className="glass rounded-3xl p-6 md:p-8">
+      <section id="builder" className="relative z-10 mx-auto max-w-5xl px-6 pb-8">
+        <div className="glass rounded-3xl p-4 md:p-6">
           {/* Avatar + Voice chip row */}
-          <div className="mb-5 flex flex-wrap items-center gap-3">
+          <div className="mb-3 flex flex-wrap items-center gap-3">
             <div ref={avatarRef} className="relative">
               <button
                 onClick={() => setAvatarOpen((v) => !v)}
@@ -415,12 +487,12 @@ export default function Home() {
           </div>
 
           {/* Voice / brand control */}
-          <div className="mb-5 rounded-2xl border border-[var(--border-token)] bg-[var(--surface)] p-4">
-            <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-wide text-muted">
+          <div className="mb-3 rounded-2xl border border-[var(--border-token)] bg-[var(--surface)] p-3">
+            <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted">
               <span className="h-1 w-1 rounded-full bg-[var(--primary)]" />
               Brand voice
             </div>
-            <div className="mb-3 inline-flex rounded-full border border-[var(--border-token)] p-1 text-xs">
+            <div className="mb-2 inline-flex rounded-full border border-[var(--border-token)] p-1 text-xs">
               <button
                 onClick={() => setVoiceMode("templates")}
                 className={`rounded-full px-3 py-1 transition ${
@@ -449,7 +521,7 @@ export default function Home() {
                   <button
                     key={v.id}
                     onClick={() => setVoiceTemplate(v.id)}
-                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition ${
+                    className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition ${
                       voiceTemplate === v.id
                         ? "border-[var(--primary)] bg-[var(--primary)]/15 text-foreground"
                         : "border-[var(--border-token)] text-muted hover:text-foreground"
@@ -464,89 +536,205 @@ export default function Home() {
               <textarea
                 value={voiceCustom}
                 onChange={(e) => setVoiceCustom(e.target.value)}
-                placeholder="Describe the voice and tone you want. e.g. 'Direct, no fluff, like a friend who happens to run a B2B startup. Use 1-2 syllable words. Never sound like a sales pitch.'"
-                rows={3}
+                placeholder="Describe the voice and tone. e.g. 'Direct, no fluff. Never sound like a sales pitch.'"
+                rows={2}
                 className="w-full resize-none rounded-xl border border-[var(--border-token)] bg-white px-3 py-2 text-sm placeholder:text-muted/60 focus:border-[var(--primary)] focus:outline-none"
               />
             )}
           </div>
 
-          {/* Target input */}
-          <div className="mb-5 rounded-2xl border border-[var(--border-token)] bg-[var(--surface)] p-4">
-            <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-wide text-muted">
-              <span className="h-1 w-1 rounded-full bg-[var(--primary)]" />
-              Target
+          {/* Target + Your company — side by side */}
+          <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+            {/* Target input */}
+            <div className="rounded-2xl border border-[var(--border-token)] bg-[var(--surface)] p-3">
+              <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted">
+                <span className="h-1 w-1 rounded-full bg-[var(--primary)]" />
+                Target
+              </div>
+              <div className="mb-2 inline-flex rounded-full border border-[var(--border-token)] p-1 text-xs">
+                <button
+                  onClick={() => setInputMode("linkedin")}
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1 transition ${
+                    inputMode === "linkedin"
+                      ? "bg-[var(--primary)] text-white"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  <Linkedin className="h-3.5 w-3.5" /> LinkedIn URL
+                </button>
+                <button
+                  onClick={() => setInputMode("company")}
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1 transition ${
+                    inputMode === "company"
+                      ? "bg-[var(--primary)] text-white"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  <Building2 className="h-3.5 w-3.5" /> Company name
+                </button>
+              </div>
+              <div className="flex items-center gap-2 rounded-xl border border-[var(--border-token)] bg-white px-3 py-2 focus-within:border-[var(--primary)]">
+                {inputMode === "linkedin" ? (
+                  <Linkedin className="h-4 w-4 shrink-0 text-[var(--primary-light)]" />
+                ) : (
+                  <Building2 className="h-4 w-4 shrink-0 text-[var(--primary-light)]" />
+                )}
+                <input
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder={
+                    inputMode === "linkedin"
+                      ? "linkedin.com/in/satyanadella"
+                      : "Lumen Corp"
+                  }
+                  className="w-full bg-transparent text-sm outline-none placeholder:text-muted/60"
+                />
+              </div>
             </div>
-            <div className="mb-3 inline-flex rounded-full border border-[var(--border-token)] p-1 text-xs">
-              <button
-                onClick={() => setInputMode("linkedin")}
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1 transition ${
-                  inputMode === "linkedin"
-                    ? "bg-[var(--primary)] text-white"
-                    : "text-muted hover:text-foreground"
-                }`}
-              >
-                <Linkedin className="h-3.5 w-3.5" /> LinkedIn URL
-              </button>
-              <button
-                onClick={() => setInputMode("company")}
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1 transition ${
-                  inputMode === "company"
-                    ? "bg-[var(--primary)] text-white"
-                    : "text-muted hover:text-foreground"
-                }`}
-              >
-                <Building2 className="h-3.5 w-3.5" /> Company name
-              </button>
-            </div>
-            <div className="flex items-center gap-2 rounded-xl border border-[var(--border-token)] bg-white px-3 py-2 focus-within:border-[var(--primary)]">
-              {inputMode === "linkedin" ? (
-                <Linkedin className="h-4 w-4 shrink-0 text-[var(--primary-light)]" />
-              ) : (
+
+            {/* Your company (sender) */}
+            <div className="rounded-2xl border border-[var(--border-token)] bg-[var(--surface)] p-3">
+              <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted">
+                <span className="h-1 w-1 rounded-full bg-[var(--primary)]" />
+                Your company
+                <span className="ml-auto text-[0.7rem] normal-case text-muted/70">
+                  Used in the avatar&apos;s intro
+                </span>
+              </div>
+              {/* Spacer to align with Target's inner toggle row */}
+              <div className="mb-2 h-[26px]" aria-hidden="true" />
+              <div className="flex items-center gap-2 rounded-xl border border-[var(--border-token)] bg-white px-3 py-2 focus-within:border-[var(--primary)]">
                 <Building2 className="h-4 w-4 shrink-0 text-[var(--primary-light)]" />
-              )}
-              <input
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder={
-                  inputMode === "linkedin"
-                    ? "linkedin.com/in/jane-smith"
-                    : "Acme Corp"
-                }
-                className="w-full bg-transparent text-sm outline-none placeholder:text-muted/60"
-              />
+                <input
+                  value={senderCompany}
+                  onChange={(e) => setSenderCompany(e.target.value)}
+                  placeholder="AIforOperations"
+                  className="w-full bg-transparent text-sm outline-none placeholder:text-muted/60"
+                />
+              </div>
             </div>
           </div>
 
           {/* Prompt */}
-          <div className="mb-5 rounded-2xl border border-[var(--border-token)] bg-[var(--surface)] p-4">
-            <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-wide text-muted">
+          <div className="mb-3 rounded-2xl border border-[var(--border-token)] bg-[var(--surface)] p-3">
+            <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted">
               <span className="h-1 w-1 rounded-full bg-[var(--primary)]" />
-              Prompt
-              <span className="ml-auto flex items-center gap-3 text-[0.7rem] normal-case text-muted/70">
-                <span>What should the video say or focus on?</span>
-                <span
-                  className={`font-mono ${
-                    prompt.length > PROMPT_LIMIT * 0.9
-                      ? "text-[var(--primary-light)]"
-                      : ""
-                  }`}
-                >
-                  {prompt.length}/{PROMPT_LIMIT}
-                </span>
+              What&apos;s the purpose of the video?
+              <span className="ml-2 normal-case text-muted/70">
+                Mention the offer, context, attach documents
+              </span>
+              <span
+                className={`ml-auto font-mono text-[0.7rem] normal-case ${
+                  prompt.length > PROMPT_LIMIT * 0.9
+                    ? "text-[var(--primary-light)]"
+                    : "text-muted/70"
+                }`}
+              >
+                {prompt.length}/{PROMPT_LIMIT}
               </span>
             </div>
-            <textarea
-              value={prompt}
-              onChange={(e) => {
-                if (e.target.value.length <= PROMPT_LIMIT) {
-                  setPrompt(e.target.value);
-                }
-              }}
-              placeholder="Pitch them on a 30-day pilot to fix their homepage load time. Mention their recent hiring push. Keep it punchy, no fluff."
-              rows={3}
-              className="w-full resize-none rounded-xl border border-[var(--border-token)] bg-white px-3 py-2 text-sm placeholder:text-muted/60 focus:border-[var(--primary)] focus:outline-none"
-            />
+            <div className="rounded-xl border border-[var(--border-token)] bg-white p-2 focus-within:border-[var(--primary)]">
+              <textarea
+                value={prompt}
+                onChange={(e) => {
+                  if (e.target.value.length <= PROMPT_LIMIT) {
+                    setPrompt(e.target.value);
+                  }
+                }}
+                placeholder="Offer them a 30-day pilot to fix their homepage load time. Reference our case study and their recent hiring push."
+                rows={2}
+                className="w-full resize-none bg-transparent px-1 py-1 text-sm placeholder:text-muted/60 focus:outline-none"
+              />
+
+              {/* Attachment chips */}
+              {attachments.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {attachments.map((a) => {
+                    const isImage = a.file.type.startsWith("image/");
+                    return (
+                      <div
+                        key={a.id}
+                        className="group flex max-w-full items-center gap-1.5 rounded-lg border border-[var(--border-token)] bg-[var(--surface)] py-1 pl-1 pr-1.5 text-[0.72rem]"
+                      >
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[var(--surface-strong)] text-[var(--primary)]">
+                          {isImage && a.previewUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={a.previewUrl}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                          ) : isImage ? (
+                            <ImageIcon className="h-3.5 w-3.5" />
+                          ) : (
+                            <FileText className="h-3.5 w-3.5" />
+                          )}
+                        </span>
+                        <span className="flex min-w-0 flex-col leading-tight">
+                          <span className="max-w-[160px] truncate font-medium text-foreground/90">
+                            {a.file.name}
+                          </span>
+                          <span className="text-[0.65rem] text-muted">
+                            {formatBytes(a.file.size)}
+                          </span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(a.id)}
+                          aria-label={`Remove ${a.file.name}`}
+                          className="ml-1 flex h-5 w-5 items-center justify-center rounded-md text-muted transition hover:bg-[var(--surface-strong)] hover:text-foreground"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Toolbar */}
+              <div className="mt-2 flex items-center gap-2 border-t border-[var(--border-token)] pt-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+                  onChange={(e) => handleFiles(e.target.files)}
+                  className="sr-only"
+                  aria-hidden="true"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={attachments.length >= MAX_FILES}
+                  title={
+                    attachments.length >= MAX_FILES
+                      ? `Max ${MAX_FILES} files`
+                      : `Attach files · ${ALLOWED_HINT}`
+                  }
+                  className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted transition hover:bg-[var(--surface-strong)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Paperclip className="h-3.5 w-3.5" />
+                  Attach
+                </button>
+                <span className="text-[0.7rem] text-muted/70">
+                  {ALLOWED_HINT}
+                </span>
+                {attachments.length > 0 && (
+                  <span className="ml-auto font-mono text-[0.7rem] text-muted">
+                    {attachments.length}/{MAX_FILES} ·{" "}
+                    {formatBytes(totalAttachedBytes)}/5 MB
+                  </span>
+                )}
+              </div>
+
+              {attachError && (
+                <div className="mt-2 flex items-start gap-1.5 rounded-md bg-[var(--primary)]/8 px-2 py-1.5 text-[0.72rem] text-[var(--primary)]">
+                  <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" />
+                  <span>{attachError}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* CTA row */}
@@ -735,12 +923,8 @@ export default function Home() {
                 For B2B operators
               </div>
               <h3 className="text-2xl font-semibold tracking-tight md:text-3xl">
-                Want this wired into your outbound?
+                Want the video sent directly to your inbox?
               </h3>
-              <p className="mt-2 text-sm text-muted">
-                We&apos;ll set it up against your CRM and run it at scale.
-                Drop your email and we&apos;ll reach out.
-              </p>
             </div>
             <form
               onSubmit={submitEmail}
@@ -788,10 +972,13 @@ export default function Home() {
               Pre-rendered samples. Click any to play.
             </p>
           </div>
-          <button className="hidden items-center gap-1.5 rounded-full border border-[var(--border-token-strong)] px-4 py-2 text-xs transition hover:border-[var(--primary)] md:inline-flex">
+          <Link
+            href="/gallery"
+            className="hidden items-center gap-1.5 rounded-full border border-[var(--border-token-strong)] px-4 py-2 text-xs transition hover:border-[var(--primary)] md:inline-flex"
+          >
             View all
             <ArrowRight className="h-3.5 w-3.5" />
-          </button>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -840,10 +1027,43 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ===== What's next ===== */}
+      <section id="whats-next" className="relative z-10 mx-auto max-w-5xl px-6 pb-24 pt-4">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted">
+              <Wand2 className="h-3.5 w-3.5 text-[var(--primary-light)]" />
+              On the roadmap
+            </div>
+            <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+              Ditch the{" "}
+              <span
+                className="text-accent-gradient"
+                style={{ fontStyle: "italic", fontWeight: 600 }}
+              >
+                Loom
+              </span>
+              . Upload the deck.
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm text-muted md:text-base">
+              Drop in your docs or a presentation. LeadFlow returns a
+              motion-graphics walkthrough narrated by your AI avatar.
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--primary)]/30 bg-[var(--primary)]/8 px-3 py-1.5 text-xs font-medium text-[var(--primary)]">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--primary)] opacity-60" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />
+            </span>
+            Launching soon
+          </div>
+        </div>
+      </section>
+
       {/* ===== Footer ===== */}
       <footer className="border-t border-[var(--border-token)] py-8 text-center text-xs text-muted">
         <div className="mx-auto max-w-7xl px-6">
-          Built for the HeyGen WTD hackathon · May 2026 ·{" "}
+          Built for the HeyGen hackathon · May 2026 ·{" "}
           <a
             href="https://aiforoperations.io"
             className="text-foreground/80 hover:text-foreground"
