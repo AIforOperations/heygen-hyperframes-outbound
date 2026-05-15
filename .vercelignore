@@ -1,0 +1,14 @@
+video/
+work-*/
+design_audit/
+design_audit_before_full.png
+# compositions/ IS deployed — the runtime compiler reads from it
+# (registry.json, scenes/, _shared/). Only exclude scratch plan JSONs:
+compositions/sample-plan.json
+compositions/scott-plan.json
+compositions/scott-plan-v2.json
+public/gallery/
+public/compositions/sample-plan-001/
+public/compositions/scott-leadflow-001/
+.next/
+node_modules/

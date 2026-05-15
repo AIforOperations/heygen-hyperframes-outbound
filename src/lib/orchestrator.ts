@@ -12,6 +12,7 @@ import {
 import { extractAudioFromVideoUrl } from "./audio";
 import { transcribeAudio, type ElevenLabsWord } from "./elevenlabs";
 import { buildCompositionFiles } from "./composition";
+import { buildCompositionV2 } from "./composition-v2";
 import { renderInSandbox } from "./sandbox";
 import type { ScrapeInput } from "./resolve";
 import type { ClaudeModel } from "./anthropic";
@@ -576,12 +577,19 @@ async function stagePostHeygen(job: JobState): Promise<JobState> {
     stages: { ...working.stages, transcribe: { ms: Date.now() - t } },
   };
 
-  // Compose
+  // Compose — scene-based v2 builder. Falls back to lead defaults if any
+  // scrape field is missing.
   t = Date.now();
-  const files = buildCompositionFiles({
+  if (!job.lead) throw new Error("lead missing for compose stage");
+  const files = await buildCompositionV2({
+    jobId: job.jobId,
     mp4,
     duration: job.heygenDuration,
     avatarId: job.input.avatarId,
+    lead: job.lead,
+    senderName: job.input.senderName,
+    senderCompany: job.input.senderCompany || "LeadFlow",
+    scriptText: job.scriptText,
   });
   working = {
     ...working,
