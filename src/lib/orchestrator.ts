@@ -386,7 +386,13 @@ export async function progressPipelineAsync(jobId: string): Promise<JobState | n
   if (!claimed) return initial;
 
   try {
-    return await advanceStage(claimed);
+    // Re-read after acquiring the lock so we dispatch on the latest state,
+    // not the snapshot from before the lock. Blob CDN is eventually
+    // consistent — without this, two close polls can both see the
+    // pre-videoId state and both fire HeyGen createVideo.
+    const fresh = (await readJob(jobId)) ?? claimed;
+    if (fresh.status === "complete" || fresh.status === "failed") return fresh;
+    return await advanceStage(fresh);
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown error";
     const errored: JobState = {
@@ -460,6 +466,16 @@ async function stageScript(job: JobState): Promise<JobState> {
 }
 
 async function stageHeygenCreate(job: JobState): Promise<JobState> {
+  // Final guardrail: re-read state immediately before kicking off a HeyGen
+  // render. Blob CDN can serve stale snapshots for several seconds even with
+  // cache-busting, and two concurrent polls dispatched on the same pre-video
+  // snapshot can both end up here. If videoId already exists, bail out and
+  // let the next poll handle the polling stage.
+  const latest = await readJob(job.jobId);
+  if (latest?.heygenVideoId) {
+    return await writeJob({ ...latest, processing: false });
+  }
+
   if (!job.scriptText) throw new Error("scriptText missing for heygen-create");
   const t = Date.now();
   const engine = job.input.engine ?? ASYNC_DEFAULT_ENGINE;
@@ -480,6 +496,10 @@ async function stageHeygenCreate(job: JobState): Promise<JobState> {
     resolution: "1080p",
     aspectRatio: "16:9",
     title: `LeadFlow pipeline ${job.jobId}`,
+    // HeyGen idempotency: same jobId + same payload returns the same video
+    // instead of creating a new one. This is the only layer that bills $0
+    // for duplicates — the in-handler re-read and lock above are best-effort.
+    callbackId: job.jobId,
   });
   return await writeJob({
     ...job,
