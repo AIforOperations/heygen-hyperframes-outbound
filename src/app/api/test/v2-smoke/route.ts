@@ -25,7 +25,7 @@ import type { Lead } from "@/lib/scrape";
  *   }
  */
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 export async function POST(req: Request) {
   const startedAt = Date.now();

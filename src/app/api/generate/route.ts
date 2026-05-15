@@ -33,7 +33,7 @@ import { ElevenLabsError } from "@/lib/elevenlabs";
  *   }
  */
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 interface RequestBody {
   input?: OrchestratorInput["input"];

@@ -21,7 +21,7 @@ export const runtime = "nodejs";
 // Hobby plan caps Serverless Functions at 300s. A warm sandbox render fits
 // (~150s total). Cold-start renders without a cached snapshot will time out —
 // the snapshot is built at deploy time to avoid that.
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 interface RenderRequest {
   compositionDir?: string;
