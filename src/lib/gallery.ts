@@ -14,10 +14,10 @@ export const GALLERY: GalleryEntry[] = [
     name: "Joshua X.",
     role: "Co-Founder and CEO",
     company: "HeyGen",
-    stat: "Claude-planned scenes · live v2 pipeline",
+    stat: "Claude-planned scenes · 9:16 portrait source",
     accent: "#DC2626",
     videoUrl:
-      "https://x2aue1n8zm76mdax.public.blob.vercel-storage.com/renders/v2-smoke-2026-05-15T16-45-30-289Z-Oktf15RKUMc4qTd2lAQ06afo6CSAZK.mp4",
+      "https://x2aue1n8zm76mdax.public.blob.vercel-storage.com/renders/v2-smoke-2026-05-15T17-00-34-200Z-OohxqB0GJ6KGMl5oomLwP9HfPQmCj3.mp4",
   },
   {
     id: "g0",
