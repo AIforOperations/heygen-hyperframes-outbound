@@ -498,9 +498,12 @@ async function advanceStage(job: JobState): Promise<JobState> {
     heygenStatus: v.status,
   });
 
-  // Transcribe
+  // Download MP4 once, reuse for both transcribe and compose.
   let t = Date.now();
   const audio = await extractAudioFromVideoUrl(v.video_url);
+  const mp4 = audio.buffer;
+
+  // Transcribe
   const audioBlob = new Blob([Uint8Array.from(audio.buffer)], { type: audio.contentType });
   const transcription = await transcribeAudio({
     audio: audioBlob,
@@ -517,9 +520,6 @@ async function advanceStage(job: JobState): Promise<JobState> {
 
   // Compose
   t = Date.now();
-  const mp4Resp = await fetch(v.video_url);
-  if (!mp4Resp.ok) throw new Error(`Failed to download HeyGen MP4: ${mp4Resp.status}`);
-  const mp4 = Buffer.from(await mp4Resp.arrayBuffer());
   const files = buildCompositionFiles({
     mp4,
     duration: v.duration,
