@@ -21,7 +21,7 @@ import {
   Wand2,
   X,
 } from "lucide-react";
-import { GALLERY } from "@/lib/gallery";
+import { GALLERY, type GalleryEntry } from "@/lib/gallery";
 
 function Linkedin({ className }: { className?: string }) {
   return (
@@ -283,34 +283,153 @@ export default function Home() {
     PIPELINE_STEPS.map(() => "pending")
   );
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
+  const [outputUrl, setOutputUrl] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // ---------- Gallery (dynamic) ----------
+  const [galleryEntries, setGalleryEntries] = useState<GalleryEntry[]>(GALLERY);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/gallery")
+      .then((r) => r.json())
+      .then((d: { ok?: boolean; entries?: GalleryEntry[] }) => {
+        if (cancelled || !d?.ok || !d.entries?.length) return;
+        setGalleryEntries(d.entries);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const refreshGallery = () => {
+    fetch("/api/gallery")
+      .then((r) => r.json())
+      .then((d: { ok?: boolean; entries?: GalleryEntry[] }) => {
+        if (d?.ok && d.entries?.length) setGalleryEntries(d.entries);
+      })
+      .catch(() => {});
+  };
 
   // ---------- Email capture ----------
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
 
-  // ---------- Generate handler (mock for now) ----------
+  // ---------- Generate handler ----------
+  //
+  // Async pipeline:
+  //   POST /api/generate                  → returns { jobId, state }
+  //                                          (scrape + script + heygen kickoff
+  //                                          ran on the server, ~30-60s)
+  //   GET  /api/generate?jobId=X          → poll every 7s until complete
+  //                                          The poll that catches
+  //                                          "HeyGen completed" also runs
+  //                                          transcribe + compose + render
+  //                                          inline (~40-50s).
+  //
+  // Backend stages → frontend pipeline step indices:
+  //   scrape    → step 0 active
+  //   script    → step 0 done, 1 done, 2 active
+  //   heygen    → 0..2 done, 3 active
+  //   transcribe / compose / render → 0..3 done, 4 active
+  //   done      → all done
+  const stageToSteps = (stage: string): StepStatus[] => {
+    switch (stage) {
+      case "scrape":
+        return ["active", "pending", "pending", "pending", "pending"];
+      case "script":
+        return ["done", "done", "active", "pending", "pending"];
+      case "heygen":
+        return ["done", "done", "done", "active", "pending"];
+      case "transcribe":
+      case "compose":
+      case "render":
+        return ["done", "done", "done", "done", "active"];
+      case "done":
+        return ["done", "done", "done", "done", "done"];
+      default:
+        return PIPELINE_STEPS.map(() => "pending");
+    }
+  };
+
   const startGeneration = async () => {
     if (running) return;
-    if (!inputValue.trim() || !prompt.trim()) return;
+    if (!inputValue.trim() || !prompt.trim() || !senderCompany.trim()) return;
+
     setRunning(true);
     setFinishedAt(null);
+    setOutputUrl(null);
+    setErrorMsg(null);
     setStepStatuses(PIPELINE_STEPS.map(() => "pending"));
 
-    for (let i = 0; i < PIPELINE_STEPS.length; i++) {
-      setStepStatuses((prev) => {
-        const next = [...prev];
-        next[i] = "active";
-        return next;
+    try {
+      const kind: "personUrl" | "companyUrl" | "companyName" =
+        inputMode === "company"
+          ? "companyName"
+          : inputValue.includes("/company/")
+            ? "companyUrl"
+            : "personUrl";
+
+      const tonality =
+        voiceMode === "templates" ? voiceTemplate : voiceCustom.trim();
+
+      const body = {
+        input: { kind, value: inputValue.trim() },
+        offer: prompt,
+        senderName: avatar.label,
+        senderCompany: senderCompany.trim() || undefined,
+        tonality,
+        avatarId: avatar.id,
+        engine,
+        lengthSeconds: 30,
+      };
+
+      const r = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       });
-      await new Promise((r) => setTimeout(r, PIPELINE_STEPS[i].duration));
-      setStepStatuses((prev) => {
-        const next = [...prev];
-        next[i] = "done";
-        return next;
-      });
+      const data = await r.json();
+      if (!r.ok || !data?.ok) {
+        throw new Error(
+          data?.message || data?.error || `POST failed (${r.status})`
+        );
+      }
+      const jobId: string = data.jobId;
+      setStepStatuses(stageToSteps(data.state.stage));
+
+      // Poll until complete or failed. HeyGen Avatar V can take 5-8 min;
+      // generous max (15 min) covers worst-case queueing.
+      const POLL_INTERVAL_MS = 7000;
+      const MAX_POLLS = 130;
+      for (let i = 0; i < MAX_POLLS; i++) {
+        await new Promise((res) => setTimeout(res, POLL_INTERVAL_MS));
+        const pr = await fetch(`/api/generate?jobId=${encodeURIComponent(jobId)}`);
+        const pd = await pr.json();
+        if (!pr.ok || !pd?.ok) {
+          throw new Error(
+            pd?.message || pd?.error || `Poll failed (${pr.status})`
+          );
+        }
+        const state = pd.state;
+        setStepStatuses(stageToSteps(state.stage));
+        if (state.status === "complete" && state.outputUrl) {
+          setOutputUrl(state.outputUrl);
+          setFinishedAt(Date.now());
+          refreshGallery();
+          return;
+        }
+        if (state.status === "failed") {
+          throw new Error(state.error || "Pipeline failed");
+        }
+      }
+      throw new Error("Pipeline timed out (>15 min). Check /api/generate?jobId for status.");
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : "Generation failed");
+    } finally {
+      setRunning(false);
     }
-    setFinishedAt(Date.now());
-    setRunning(false);
   };
 
   // Cmd+Enter / Ctrl+Enter to fire generation from anywhere on the page
@@ -869,18 +988,22 @@ export default function Home() {
             )}
 
             {/* Result */}
-            {finishedAt && (
+            {finishedAt && outputUrl && (
               <div className="mt-6 grid grid-cols-1 gap-4 rounded-2xl border border-[var(--border-token-strong)] bg-[var(--surface)] p-4 md:grid-cols-[1.2fr_1fr] md:p-6">
                 <div
-                  className="relative flex aspect-video items-center justify-center overflow-hidden rounded-xl"
+                  className="relative aspect-video overflow-hidden rounded-xl"
                   style={{
                     background:
                       "radial-gradient(ellipse at 30% 30%, rgba(248,113,113,0.30), transparent 60%), #0a0a0c",
                   }}
                 >
-                  <button className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-[#0a0a0c] shadow-2xl transition hover:scale-105">
-                    <Play className="h-6 w-6 translate-x-[1px]" fill="currentColor" />
-                  </button>
+                  <video
+                    src={outputUrl}
+                    controls
+                    autoPlay
+                    playsInline
+                    className="h-full w-full object-cover"
+                  />
                   <span className="absolute bottom-3 left-3 tag" style={{ background: "rgba(255,255,255,0.92)" }}>0:30 · 1080p</span>
                 </div>
                 <div className="flex flex-col gap-3">
@@ -896,16 +1019,40 @@ export default function Home() {
                     {prompt.slice(0, 140) || "Personalized 30-second outbound video."}
                   </div>
                   <div className="mt-auto flex flex-wrap items-center gap-2">
-                    <button className="rounded-full bg-foreground px-4 py-1.5 text-xs font-medium text-white transition hover:opacity-90">
+                    <a
+                      href={outputUrl}
+                      download
+                      className="rounded-full bg-foreground px-4 py-1.5 text-xs font-medium text-white transition hover:opacity-90"
+                    >
                       Download MP4
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(outputUrl).catch(() => {});
+                      }}
+                      className="rounded-full border border-[var(--border-token-strong)] px-4 py-1.5 text-xs transition hover:border-[var(--primary)]"
+                    >
+                      Copy link
                     </button>
-                    <button className="rounded-full border border-[var(--border-token-strong)] px-4 py-1.5 text-xs transition hover:border-[var(--primary)]">
-                      Share link
-                    </button>
-                    <button className="rounded-full border border-[var(--border-token-strong)] px-4 py-1.5 text-xs transition hover:border-[var(--primary)]">
+                    <button
+                      type="button"
+                      onClick={startGeneration}
+                      className="rounded-full border border-[var(--border-token-strong)] px-4 py-1.5 text-xs transition hover:border-[var(--primary)]"
+                    >
                       Regenerate
                     </button>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {errorMsg && (
+              <div className="mt-6 flex items-start gap-2 rounded-2xl border border-[var(--primary)]/40 bg-[var(--primary)]/8 p-4 text-sm text-[var(--primary)]">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  <div className="font-medium">Generation failed</div>
+                  <div className="mt-0.5 text-xs text-[var(--primary)]/80">{errorMsg}</div>
                 </div>
               </div>
             )}
@@ -982,35 +1129,50 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {GALLERY.map((g) => (
-            <button
+          {galleryEntries.slice(0, 4).map((g) => (
+            <div
               key={g.id}
               className="glass glass-hover group flex flex-col overflow-hidden rounded-2xl text-left"
             >
               <div
-                className="relative flex aspect-video items-center justify-center"
+                className="relative flex aspect-video items-center justify-center overflow-hidden"
                 style={{
                   background: `radial-gradient(ellipse at 30% 30%, ${g.accent}55, transparent 65%), #0a0a0c`,
                 }}
               >
-                <span
-                  className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold text-white shadow-lg"
-                  style={{ background: g.accent }}
-                >
-                  {g.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
-                </span>
-                <span
-                  className="absolute bottom-3 left-3 tag"
-                  style={{ background: "rgba(255,255,255,0.92)" }}
-                >
-                  0:30
-                </span>
-                <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#0a0a0c] opacity-0 shadow-lg transition group-hover:opacity-100">
-                  <Play className="h-4 w-4 translate-x-[1px]" fill="currentColor" />
-                </span>
+                {g.videoUrl ? (
+                  <video
+                    src={g.videoUrl}
+                    controls
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload="metadata"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <>
+                    <span
+                      className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold text-white shadow-lg"
+                      style={{ background: g.accent }}
+                    >
+                      {g.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </span>
+                    <span
+                      className="absolute bottom-3 left-3 tag"
+                      style={{ background: "rgba(255,255,255,0.92)" }}
+                    >
+                      0:30
+                    </span>
+                    <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#0a0a0c] opacity-0 shadow-lg transition group-hover:opacity-100">
+                      <Play className="h-4 w-4 translate-x-[1px]" fill="currentColor" />
+                    </span>
+                  </>
+                )}
               </div>
               <div className="flex flex-col gap-1 p-4">
                 <div className="flex items-center justify-between">
@@ -1022,7 +1184,7 @@ export default function Home() {
                 </div>
                 <div className="mt-2 text-xs font-medium text-[var(--primary)]">{g.stat}</div>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       </section>

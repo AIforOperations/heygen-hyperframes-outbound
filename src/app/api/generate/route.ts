@@ -1,4 +1,10 @@
-import { runPipeline, type OrchestratorInput, type ProgressEvent } from "@/lib/orchestrator";
+import { NextResponse } from "next/server";
+import {
+  startPipelineAsync,
+  progressPipelineAsync,
+  type OrchestratorInput,
+} from "@/lib/orchestrator";
+import { readJob } from "@/lib/jobs";
 import { AnthropicError } from "@/lib/anthropic";
 import { ApifyError } from "@/lib/apify";
 import { SerpApiError } from "@/lib/serpapi";
@@ -6,28 +12,24 @@ import { HeyGenError } from "@/lib/heygen";
 import { ElevenLabsError } from "@/lib/elevenlabs";
 
 /**
- * POST /api/generate
+ * POST /api/generate     → start pipeline (scrape + script + heygen kickoff)
+ *                          returns: { jobId, state }
  *
- * End-to-end pipeline: scrape → script → HeyGen → transcribe → compose → render.
+ * GET  /api/generate?jobId=X  → advance + read state; runs post-HeyGen stages
+ *                          inline when HeyGen completes. Frontend polls this
+ *                          every 5-10s.
  *
- * Two response modes (selected by Accept header):
- *   - text/event-stream  → SSE; one `event: progress` per stage transition,
- *                          final `event: result` with full payload, `event: error`
- *                          on failure. Use this from the frontend pipeline UI.
- *   - application/json   → blocking request, returns full result at the end.
- *                          Use this for cURL testing.
- *
- * Body:
+ * Body for POST:
  *   {
- *     input: { kind: "personUrl" | "companyUrl" | "companyName", value: string },
+ *     input: { kind, value },
  *     offer: string,
- *     senderName: string,
- *     senderCompany?: string,           // default "LeadFlow"
+ *     senderName: string,        // avatar's label
+ *     senderCompany?: string,    // default "LeadFlow"
  *     tonality?: string,
- *     scriptModel?: ClaudeModel,
  *     avatarId: string,
- *     engine?: "avatar_iv" | "avatar_v", // default "avatar_iv" to fit 300s
+ *     engine?: "avatar_v" | "avatar_iv",   // default "avatar_v"
  *     voiceId?: string,
+ *     lengthSeconds?: number,    // default 30
  *   }
  */
 export const runtime = "nodejs";
@@ -47,10 +49,7 @@ interface RequestBody {
 }
 
 function jsonError(message: string, status: number) {
-  return new Response(JSON.stringify({ ok: false, error: message }), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
+  return NextResponse.json({ ok: false, error: message }, { status });
 }
 
 function classifyError(err: unknown): { status: number; body: Record<string, unknown> } {
@@ -130,89 +129,36 @@ export async function POST(req: Request) {
     return jsonError(validated, 400);
   }
 
-  const wantsStream = req.headers.get("accept")?.includes("text/event-stream");
-
-  if (wantsStream) {
-    return streamResponse(validated);
-  }
-  return blockingResponse(validated);
-}
-
-// ----- JSON blocking mode -----
-
-async function blockingResponse(input: OrchestratorInput): Promise<Response> {
   try {
-    const result = await runPipeline(input);
-    return new Response(JSON.stringify(result), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    const job = await startPipelineAsync(validated);
+    if (job.status === "failed") {
+      // Pipeline kickoff errored synchronously (scrape/script/heygen-create).
+      return NextResponse.json({ ok: false, jobId: job.jobId, state: job }, { status: 502 });
+    }
+    return NextResponse.json({ ok: true, jobId: job.jobId, state: job });
   } catch (err) {
-    const { status, body } = classifyError(err);
-    return new Response(JSON.stringify(body), {
-      status,
-      headers: { "Content-Type": "application/json" },
-    });
+    const { status, body: errBody } = classifyError(err);
+    return NextResponse.json(errBody, { status });
   }
 }
 
-// ----- SSE streaming mode -----
-//
-// Each event is `event: <name>\ndata: <json>\n\n`. Frontend uses EventSource
-// or fetch+ReadableStream to consume.
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const jobId = url.searchParams.get("jobId");
+  if (!jobId) return jsonError("jobId query parameter is required", 400);
 
-function sseLine(event: string, data: unknown): string {
-  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-}
-
-function streamResponse(input: OrchestratorInput): Response {
-  const encoder = new TextEncoder();
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = (event: string, data: unknown) => {
-        controller.enqueue(encoder.encode(sseLine(event, data)));
-      };
-
-      // Heartbeat so the connection doesn't get killed by intermediate proxies
-      // (long HeyGen polls can be silent for ~10s otherwise).
-      const heartbeat = setInterval(() => {
-        try {
-          controller.enqueue(encoder.encode(": keep-alive\n\n"));
-        } catch {
-          /* controller may already be closed */
-        }
-      }, 15_000);
-
-      const onProgress = (event: ProgressEvent) => {
-        send("progress", event);
-      };
-
-      try {
-        const result = await runPipeline(input, onProgress);
-        send("result", result);
-      } catch (err) {
-        const { body } = classifyError(err);
-        send("error", body);
-      } finally {
-        clearInterval(heartbeat);
-        try {
-          controller.close();
-        } catch {
-          /* already closed */
-        }
-      }
-    },
-  });
-
-  return new Response(stream, {
-    status: 200,
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-      // Disable Vercel's edge buffering for SSE
-      "X-Accel-Buffering": "no",
-    },
-  });
+  try {
+    // If the job is already complete, just read it. Otherwise advance one tick.
+    const existing = await readJob(jobId);
+    if (!existing) return jsonError(`Job ${jobId} not found`, 404);
+    if (existing.status === "complete" || existing.status === "failed") {
+      return NextResponse.json({ ok: true, state: existing });
+    }
+    const state = await progressPipelineAsync(jobId);
+    if (!state) return jsonError(`Job ${jobId} not found`, 404);
+    return NextResponse.json({ ok: true, state });
+  } catch (err) {
+    const { status, body: errBody } = classifyError(err);
+    return NextResponse.json(errBody, { status });
+  }
 }
