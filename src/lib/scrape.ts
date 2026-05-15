@@ -362,7 +362,10 @@ async function enrichWebsite(companyName: string | null): Promise<{
   const summary = websiteUrl ? await crawlHomepage(websiteUrl).catch(() => null) : null;
 
   const domain = websiteUrl ? domainFromUrl(websiteUrl) : null;
-  const logoUrl = domain ? `https://logo.clearbit.com/${domain}` : null;
+  // Clearbit's free logo API was deprecated and `logo.clearbit.com` no
+  // longer resolves DNS. Until we wire up another provider, leave logoUrl
+  // null and let the composition's initials-fallback render in its place.
+  const logoUrl: string | null = null;
 
   return { summary, websiteUrl, domain, logoUrl };
 }

@@ -274,7 +274,33 @@ export async function generateScenePlan(input: PlannerInput): Promise<ScenePlan>
   // (trailing avatar audio gets trimmed by the renderer).
   sanitizeScheduling(plan);
 
+  // Drop dead logo URLs so the scenes render their initials-fallback path
+  // instead of a broken-image placeholder. Add hosts as we discover dead
+  // providers (Clearbit's free logo API was deprecated).
+  scrubDeadLogoUrls(plan);
+
   return plan;
+}
+
+const DEAD_LOGO_HOSTS = ["logo.clearbit.com", "clearbit.com"];
+
+function scrubDeadLogoUrls(plan: ScenePlan): void {
+  for (const scene of plan.scenes) {
+    const vars = scene.variables;
+    for (const key of Object.keys(vars)) {
+      if (!/logo|image/i.test(key)) continue;
+      const v = vars[key];
+      if (typeof v !== "string") continue;
+      try {
+        const host = new URL(v).hostname.toLowerCase();
+        if (DEAD_LOGO_HOSTS.some((h) => host === h || host.endsWith(`.${h}`))) {
+          vars[key] = "";
+        }
+      } catch {
+        // not a URL — leave it alone
+      }
+    }
+  }
 }
 
 // Scene duration ranges from compositions/registry.json. Hardcoded here
