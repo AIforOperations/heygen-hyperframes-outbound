@@ -308,14 +308,31 @@ export default function Home() {
 
   return (
     <main className="relative min-h-screen w-full overflow-x-hidden">
+      <div className="grain" aria-hidden="true" />
       {/* ===== Hero (compact) ===== */}
       <section className="relative">
         <div className="hero-glow" />
-        <div className="relative z-10 mx-auto max-w-6xl px-6 pt-10 pb-6 text-center md:pt-14 md:pb-8">
-          <h1 className="blur-in d-1 text-4xl font-semibold leading-[1.05] tracking-tight md:text-6xl">
-            Personalized Outbound Video
+        <div className="relative z-10 mx-auto max-w-6xl px-6 pt-12 pb-6 text-center md:pt-20 md:pb-10">
+          <div className="blur-in d-1 mb-5 inline-flex items-center gap-2 rounded-full border border-[var(--border-token)] bg-white/70 px-3 py-1 text-xs backdrop-blur">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--primary)] opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--primary)]" />
+            </span>
+            <span className="font-medium text-foreground">AIforOperations</span>
+            <span className="text-muted">·</span>
+            <span className="text-muted">HeyGen WTD · May 2026</span>
+          </div>
+          <h1 className="blur-in d-2 text-5xl font-semibold leading-[1.02] tracking-tight md:text-7xl">
+            Personalized{" "}
+            <span
+              className="text-accent-gradient"
+              style={{ fontStyle: "italic", fontWeight: 600 }}
+            >
+              Outbound
+            </span>{" "}
+            Video
           </h1>
-          <p className="blur-in d-2 mx-auto mt-4 max-w-xl text-sm text-muted md:text-base">
+          <p className="blur-in d-3 mx-auto mt-5 max-w-xl text-base text-muted md:text-lg">
             One custom video per prospect. At scale.
           </p>
         </div>
@@ -343,7 +360,7 @@ export default function Home() {
                 <ChevronDown className="h-4 w-4 text-muted" />
               </button>
               {avatarOpen && (
-                <div className="absolute left-0 top-[calc(100%+8px)] z-30 w-72 rounded-2xl border border-[var(--border-token-strong)] bg-[#0c0c12] p-2 shadow-2xl">
+                <div className="absolute left-0 top-[calc(100%+8px)] z-30 w-72 rounded-2xl border border-[var(--border-token-strong)] bg-white p-2 shadow-2xl">
                   {avatars.map((a) => (
                     <button
                       key={a.id}
@@ -372,7 +389,7 @@ export default function Home() {
             <div className="ml-auto flex items-center gap-2 rounded-full border border-[var(--border-token-strong)] bg-[var(--surface)] p-1 text-xs">
               <Cpu className="ml-2 h-3.5 w-3.5 text-[var(--primary-light)]" />
               <span className="text-muted">Engine</span>
-              <div className="inline-flex rounded-full bg-[#0c0c12] p-0.5">
+              <div className="inline-flex rounded-full bg-white p-0.5">
                 <button
                   onClick={() => setEngine("avatar_iv")}
                   className={`rounded-full px-3 py-1 text-xs transition ${
@@ -449,7 +466,7 @@ export default function Home() {
                 onChange={(e) => setVoiceCustom(e.target.value)}
                 placeholder="Describe the voice and tone you want. e.g. 'Direct, no fluff, like a friend who happens to run a B2B startup. Use 1-2 syllable words. Never sound like a sales pitch.'"
                 rows={3}
-                className="w-full resize-none rounded-xl border border-[var(--border-token)] bg-[#0c0c12] px-3 py-2 text-sm placeholder:text-muted/60 focus:border-[var(--primary)] focus:outline-none"
+                className="w-full resize-none rounded-xl border border-[var(--border-token)] bg-white px-3 py-2 text-sm placeholder:text-muted/60 focus:border-[var(--primary)] focus:outline-none"
               />
             )}
           </div>
@@ -482,7 +499,7 @@ export default function Home() {
                 <Building2 className="h-3.5 w-3.5" /> Company name
               </button>
             </div>
-            <div className="flex items-center gap-2 rounded-xl border border-[var(--border-token)] bg-[#0c0c12] px-3 py-2 focus-within:border-[var(--primary)]">
+            <div className="flex items-center gap-2 rounded-xl border border-[var(--border-token)] bg-white px-3 py-2 focus-within:border-[var(--primary)]">
               {inputMode === "linkedin" ? (
                 <Linkedin className="h-4 w-4 shrink-0 text-[var(--primary-light)]" />
               ) : (
@@ -528,7 +545,7 @@ export default function Home() {
               }}
               placeholder="Pitch them on a 30-day pilot to fix their homepage load time. Mention their recent hiring push. Keep it punchy, no fluff."
               rows={3}
-              className="w-full resize-none rounded-xl border border-[var(--border-token)] bg-[#0c0c12] px-3 py-2 text-sm placeholder:text-muted/60 focus:border-[var(--primary)] focus:outline-none"
+              className="w-full resize-none rounded-xl border border-[var(--border-token)] bg-white px-3 py-2 text-sm placeholder:text-muted/60 focus:border-[var(--primary)] focus:outline-none"
             />
           </div>
 
@@ -550,7 +567,7 @@ export default function Home() {
               onClick={startGeneration}
               disabled={!canGenerate}
               title={disabledReason || "Generate video"}
-              className="group inline-flex items-center gap-2 rounded-full bg-foreground py-1.5 pl-5 pr-1.5 text-sm font-medium text-[#050508] transition disabled:cursor-not-allowed disabled:opacity-40"
+              className="group inline-flex items-center gap-2 rounded-full bg-foreground py-1.5 pl-5 pr-1.5 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-40"
             >
               <span>{running ? "Generating…" : "Generate video"}</span>
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--primary)] text-white transition group-hover:bg-[var(--secondary)]">
@@ -636,13 +653,13 @@ export default function Home() {
 
             {/* Log feed — one line per completed step */}
             {(completedCount > 0 || running) && (
-              <div className="mt-5 rounded-2xl border border-[var(--border-token)] bg-[#08080c] p-4 font-mono text-[0.78rem] leading-relaxed">
+              <div className="surface-dark mt-5 rounded-2xl border border-black/40 p-4 font-mono text-[0.78rem] leading-relaxed">
                 {PIPELINE_STEPS.map((step, i) => {
                   const status = stepStatuses[i];
                   if (status === "pending") return null;
                   if (status === "active") {
                     return (
-                      <div key={step.id} className="flex items-center gap-2 text-muted">
+                      <div key={step.id} className="flex items-center gap-2 text-white/55">
                         <Loader2 className="h-3 w-3 shrink-0 spin-ring text-[var(--primary-light)]" />
                         <span className="text-[var(--primary-light)]">
                           {step.label.toLowerCase()}…
@@ -653,7 +670,7 @@ export default function Home() {
                   return (
                     <div
                       key={step.id}
-                      className="flex items-center gap-2 text-foreground/85"
+                      className="flex items-center gap-2 text-white/85"
                     >
                       <Check className="h-3 w-3 shrink-0 text-[var(--primary-light)]" />
                       <span>{stepSummary(i)}</span>
@@ -670,13 +687,13 @@ export default function Home() {
                   className="relative flex aspect-video items-center justify-center overflow-hidden rounded-xl"
                   style={{
                     background:
-                      "radial-gradient(ellipse at 30% 30%, rgba(248,113,113,0.18), transparent 60%), #0c0c12",
+                      "radial-gradient(ellipse at 30% 30%, rgba(248,113,113,0.30), transparent 60%), #0a0a0c",
                   }}
                 >
-                  <button className="flex h-16 w-16 items-center justify-center rounded-full bg-foreground text-[#050508] transition hover:scale-105">
+                  <button className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-[#0a0a0c] shadow-2xl transition hover:scale-105">
                     <Play className="h-6 w-6 translate-x-[1px]" fill="currentColor" />
                   </button>
-                  <span className="absolute bottom-3 left-3 tag">0:30 · 1080p</span>
+                  <span className="absolute bottom-3 left-3 tag" style={{ background: "rgba(255,255,255,0.92)" }}>0:30 · 1080p</span>
                 </div>
                 <div className="flex flex-col gap-3">
                   <div className="text-xs uppercase tracking-wide text-muted">
@@ -691,7 +708,7 @@ export default function Home() {
                     {prompt.slice(0, 140) || "Personalized 30-second outbound video."}
                   </div>
                   <div className="mt-auto flex flex-wrap items-center gap-2">
-                    <button className="rounded-full bg-foreground px-4 py-1.5 text-xs font-medium text-[#050508] transition hover:bg-white/90">
+                    <button className="rounded-full bg-foreground px-4 py-1.5 text-xs font-medium text-white transition hover:opacity-90">
                       Download MP4
                     </button>
                     <button className="rounded-full border border-[var(--border-token-strong)] px-4 py-1.5 text-xs transition hover:border-[var(--primary)]">
@@ -739,7 +756,7 @@ export default function Home() {
               />
               <button
                 type="submit"
-                className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-xs font-medium text-[#050508] transition hover:bg-white/90"
+                className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-xs font-medium text-white transition hover:opacity-90"
               >
                 {emailSent ? (
                   <>
@@ -786,11 +803,11 @@ export default function Home() {
               <div
                 className="relative flex aspect-video items-center justify-center"
                 style={{
-                  background: `radial-gradient(ellipse at 30% 30%, ${g.accent}33, transparent 60%), #0c0c12`,
+                  background: `radial-gradient(ellipse at 30% 30%, ${g.accent}55, transparent 65%), #0a0a0c`,
                 }}
               >
                 <span
-                  className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold text-white"
+                  className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold text-white shadow-lg"
                   style={{ background: g.accent }}
                 >
                   {g.name
@@ -798,8 +815,13 @@ export default function Home() {
                     .map((n) => n[0])
                     .join("")}
                 </span>
-                <span className="absolute bottom-3 left-3 tag">0:30</span>
-                <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-foreground/90 text-[#050508] opacity-0 transition group-hover:opacity-100">
+                <span
+                  className="absolute bottom-3 left-3 tag"
+                  style={{ background: "rgba(255,255,255,0.92)" }}
+                >
+                  0:30
+                </span>
+                <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#0a0a0c] opacity-0 shadow-lg transition group-hover:opacity-100">
                   <Play className="h-4 w-4 translate-x-[1px]" fill="currentColor" />
                 </span>
               </div>
@@ -811,7 +833,7 @@ export default function Home() {
                 <div className="text-xs text-muted">
                   {g.role} · {g.company}
                 </div>
-                <div className="mt-2 text-xs text-[var(--primary-light)]">{g.stat}</div>
+                <div className="mt-2 text-xs font-medium text-[var(--primary)]">{g.stat}</div>
               </div>
             </button>
           ))}
