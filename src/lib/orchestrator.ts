@@ -474,7 +474,13 @@ async function stageHeygenCreate(job: JobState): Promise<JobState> {
   // let the next poll handle the polling stage.
   const latest = await readJob(job.jobId);
   if (latest?.heygenVideoId) {
-    return await writeJob({ ...latest, processing: false });
+    // Stale outer dispatch routed us here even though the video exists.
+    // Don't just bail — pipe straight into the poll so this tick makes
+    // forward progress instead of wasting it. Without this, a sustained
+    // stale-read streak on Vercel Blob's CDN would leave the job pinned at
+    // stage="heygen" / heygenStatus="waiting" forever even though HeyGen
+    // has already completed the render.
+    return await stageHeygenPoll(latest);
   }
 
   if (!job.scriptText) throw new Error("scriptText missing for heygen-create");

@@ -106,7 +106,18 @@ export async function readJob(jobId: string): Promise<JobState | null> {
     // Cache-Control. Multiple sequential updateJob() calls inside a single
     // function would otherwise read stale state and clobber prior writes.
     const url = `${meta.url}${meta.url.includes("?") ? "&" : "?"}_t=${Date.now()}`;
-    const resp = await fetch(url, { cache: "no-store" });
+    const resp = await fetch(url, {
+      cache: "no-store",
+      headers: {
+        // Force the CDN edge to revalidate with origin instead of serving
+        // its cached copy. Without these headers, sustained stale-state
+        // reads can pin the orchestrator on the wrong stage handler — the
+        // query-string cache-bust alone is not reliable across all CDN
+        // edge configurations.
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+      },
+    });
     if (!resp.ok) return null;
     return (await resp.json()) as JobState;
   } catch {
