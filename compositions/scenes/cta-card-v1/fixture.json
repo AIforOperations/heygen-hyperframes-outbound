@@ -1,8 +1,8 @@
 {
-  "cta_headline": "Just say yes.",
-  "cta_subline": "I'll get started today. Zero obligation.",
+  "eyebrow": "Quick reply",
+  "cta_headline": "Reply with yes.",
+  "cta_subline": "I'll have your missed-call recovery live by Thursday. No contract, no setup fee.",
   "sender_name": "Annie",
-  "sender_company": "LeadFlow",
-  "sender_email": "annie@leadflow.io",
+  "sender_company": "AIforOperations",
   "accent_color": "#DC2626"
 }

@@ -234,11 +234,11 @@ function buildPlanFromLead(opts: PlanBuilderInput) {
         start: round1(ctaStart),
         duration: round1(ctaD),
         variables: {
-          cta_headline: "Just say yes.",
-          cta_subline: "I'll get started today. Zero obligation.",
+          eyebrow: "Quick reply",
+          cta_headline: "Reply with yes.",
+          cta_subline: `I'll get this set up for ${companyName} this week. No commitment.`,
           sender_name: opts.senderName,
           sender_company: opts.senderCompany,
-          sender_email: `${(opts.senderName || "team").toLowerCase().replace(/[^a-z]/g, "")}@${slugifyForEmail(opts.senderCompany)}.com`,
         },
       },
     ],
@@ -295,10 +295,6 @@ function domainFromUrl(url: string): string {
   } catch {
     return url;
   }
-}
-
-function slugifyForEmail(s: string): string {
-  return (s || "leadflow").toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
 function pickHeadline(lead: Lead): string {

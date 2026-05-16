@@ -1,13 +1,16 @@
 <!--
   Scene: cta-card-v1
-  Category: cta-card · Variant: hero-statement
-  Duration range: 3–8s · Default: 5s
+  Category: cta-card · Variant: hero-reply
 
   Layout:
     - Eyebrow with sender attribution
-    - Massive CTA headline
-    - Subline beneath
-    - Signature row (sender_name · sender_company · sender_email)
+    - Massive REPLY-style CTA headline (3-6 words, punchy)
+    - Subline beneath with the specific ask + timing/no-risk
+    - Small reply-arrow affordance with sender name/company
+
+  Closes a sales video with a clear "reply to this message" CTA.
+  No fake email, no QR — the prospect replies to the original message
+  the video is embedded in.
 -->
 <style>
   #cta-card-v1 {
@@ -30,6 +33,7 @@
     display: flex;
     align-items: center;
     gap: 14px;
+    font-feature-settings: "ss02", "cv11";
   }
   #cta-card-v1 .eyebrow::before {
     content: "";
@@ -41,12 +45,13 @@
   }
   #cta-card-v1 .cta {
     grid-column: span 8;
-    font-size: 152px;
+    font-size: 136px;
     font-weight: var(--weight-black);
     line-height: 0.95;
     letter-spacing: -0.04em;
     color: var(--text);
     margin: 0;
+    font-feature-settings: "ss02", "cv11";
   }
   #cta-card-v1 .cta .accent {
     color: var(--accent);
@@ -58,30 +63,47 @@
     font-weight: var(--weight-regular);
     color: var(--text-2);
     line-height: 1.3;
-    max-width: 820px;
+    max-width: 860px;
+    font-feature-settings: "ss02", "cv11";
   }
-  #cta-card-v1 .sig {
+  /* Reply affordance row — small but visually distinct.
+     A return-arrow icon next to the sender attribution telegraphs
+     "this is a message you reply to" without needing words. */
+  #cta-card-v1 .reply-row {
     grid-column: span 8;
-    margin-top: 16px;
-    padding-top: 20px;
-    border-top: 1px solid rgba(31, 26, 20, 0.12);
-    display: flex;
-    align-items: baseline;
-    gap: 16px;
+    margin-top: 18px;
+    padding: 16px 22px;
+    background: rgba(255, 255, 255, 0.65);
+    border: 1px solid rgba(31, 26, 20, 0.10);
+    border-radius: 14px;
+    backdrop-filter: blur(4px);
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    width: fit-content;
+    box-shadow: 0 4px 14px rgba(80, 30, 10, 0.06);
+  }
+  #cta-card-v1 .reply-arrow {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    color: var(--accent);
+  }
+  #cta-card-v1 .reply-text {
     font-size: 22px;
-    color: var(--text-2);
-  }
-  #cta-card-v1 .sig .name {
-    color: var(--text);
     font-weight: var(--weight-semibold);
-  }
-  #cta-card-v1 .sig .sep {
-    color: var(--text-3);
-  }
-  #cta-card-v1 .sig .email {
-    margin-left: auto;
-    font-family: "JetBrains Mono", ui-monospace, monospace;
     color: var(--text);
+    letter-spacing: -0.005em;
+    font-feature-settings: "ss02", "cv11";
+  }
+  #cta-card-v1 .reply-text .sep {
+    color: var(--text-3);
+    margin: 0 10px;
+    font-weight: var(--weight-regular);
+  }
+  #cta-card-v1 .reply-text .who {
+    color: var(--text-2);
+    font-weight: var(--weight-regular);
   }
 </style>
 
@@ -94,23 +116,25 @@
      style="--accent: {{accent_color}};">
 
   <div class="gz-safe">
-    <div class="eyebrow" data-iv-el="eyebrow">From {{sender_name}}</div>
+    {{#eyebrow}}
+    <div class="eyebrow" data-iv-el="eyebrow">{{eyebrow}}</div>
+    {{/eyebrow}}
 
-    <h1 class="cta" data-iv-el="cta">
-      <span class="accent">{{cta_headline}}</span>
-    </h1>
+    <h1 class="cta" data-iv-el="cta">{{cta_headline}}</h1>
 
     {{#cta_subline}}
     <p class="subline" data-iv-el="subline">{{cta_subline}}</p>
     {{/cta_subline}}
 
-    <div class="sig" data-iv-el="sig">
-      <span class="name">{{sender_name}}</span>
-      <span class="sep">·</span>
-      <span>{{sender_company}}</span>
-      {{#sender_email}}
-      <span class="email">{{sender_email}}</span>
-      {{/sender_email}}
+    <div class="reply-row" data-iv-el="reply">
+      <!-- Inline SVG return-arrow. Renders crisply at any zoom, no asset. -->
+      <svg class="reply-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="9 14 4 9 9 4"></polyline>
+        <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
+      </svg>
+      <span class="reply-text">
+        Reply to this message<span class="sep">·</span><span class="who">{{sender_name}} at {{sender_company}}</span>
+      </span>
     </div>
   </div>
 </div>
@@ -123,17 +147,36 @@
     if (!root) { window.__timelines["cta-card-v1"] = null; return; }
 
     const tl = gsap.timeline({ paused: true });
-    tl.fromTo(root.querySelector(".eyebrow"),
-      { opacity: 0, x: -16 },
-      { opacity: 1, x: 0, duration: 0.35, ease: "power2.out" }, 0);
+
+    const eyebrow = root.querySelector(".eyebrow");
+    if (eyebrow) {
+      tl.fromTo(eyebrow,
+        { opacity: 0, x: -16 },
+        { opacity: 1, x: 0, duration: 0.35, ease: "power2.out" }, 0);
+    }
     tl.fromTo(root.querySelector(".cta"),
-      { opacity: 0, scale: 0.86, y: 20 },
-      { opacity: 1, scale: 1, y: 0, duration: 0.7, ease: "back.out(1.6)" }, 0.15);
+      { opacity: 0, scale: 0.88, y: 16 },
+      { opacity: 1, scale: 1, y: 0, duration: 0.7, ease: "back.out(1.4)" }, 0.15);
     const sub = root.querySelector(".subline");
-    if (sub) tl.fromTo(sub, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45 }, 0.55);
-    tl.fromTo(root.querySelector(".sig"),
-      { opacity: 0, y: 8 },
-      { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 0.85);
+    if (sub) {
+      tl.fromTo(sub,
+        { opacity: 0, y: 12, filter: "blur(4px)" },
+        { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.5, ease: "power2.out" }, 0.55);
+    }
+    const reply = root.querySelector(".reply-row");
+    if (reply) {
+      tl.fromTo(reply,
+        { opacity: 0, y: 14, scale: 0.96 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.6)" }, 0.95);
+      // Subtle pulse on the arrow to draw the eye toward the call-to-action.
+      const arrow = reply.querySelector(".reply-arrow");
+      if (arrow) {
+        tl.to(arrow,
+          { x: -4, duration: 0.4, ease: "sine.inOut", yoyo: true, repeat: 3 },
+          1.4);
+      }
+    }
+
     window.__timelines["cta-card-v1"] = tl;
   })();
 </script>

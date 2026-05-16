@@ -2,14 +2,14 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "cta-card-v1",
   "type": "object",
-  "required": ["cta_headline"],
+  "required": ["cta_headline", "sender_name", "sender_company"],
   "additionalProperties": false,
   "properties": {
-    "cta_headline": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "eyebrow": { "type": "string", "maxLength": 40 },
+    "cta_headline": { "type": "string", "minLength": 1, "maxLength": 60 },
     "cta_subline": { "type": "string", "maxLength": 160 },
-    "sender_name": { "type": "string", "maxLength": 80 },
-    "sender_company": { "type": "string", "maxLength": 80 },
-    "sender_email": { "type": "string", "maxLength": 120 },
+    "sender_name": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "sender_company": { "type": "string", "minLength": 1, "maxLength": 80 },
     "accent_color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
   }
 }

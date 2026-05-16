@@ -139,7 +139,7 @@ SCENE SELECTION GUIDANCE
 - stat-callout-v1: ONLY if there is a real number from the prospect's data (years in business, headcount, turnaround time). Don't fabricate.
 - chart-comparison-v1: ONLY if you can ground both rows (e.g. "manual N hours" vs "with us, N min"). If you can't ground both, skip.
 - form-autofill-v1: Use when the offer involves filling out forms / documents (DRE PDFs, contracts, intake forms).
-- cta-card-v1: ALWAYS end with this. The "just say yes" close.
+- cta-card-v1: ALWAYS end with this. Make it a REPLY CTA — the cta_headline is a short hero ask (3-6 words: "Reply with yes.", "Want in?", "Sound good?"), and cta_subline is the specific follow-up with timing + no-risk language (e.g. "I'll have it live by Thursday. No contract."). NEVER include a fake email or URL — the prospect replies to the message the video is embedded in. NEVER use the cta_headline "Just say yes." literally — vary it per script.
 - transition-v1: Optional brief breath between two heavy scenes.
 
 DURATION CARVING
