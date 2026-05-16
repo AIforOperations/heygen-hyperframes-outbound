@@ -127,13 +127,31 @@ OUTPUT CONTRACT (strict — server rejects invalid plans)
 3. compositionId: lowercase, alphanumeric + dashes + underscores only (3-80 chars).
 4. duration: number, must EXACTLY equal the requested video duration to one decimal.
 5. avatar: pass through avatarId, videoPath, crop verbatim from the user message.
-6. Each scene object: id (lowercase, alphanumeric + dashes), templateId, start, duration, variables, AND a required \`bound_sentence\` field (see #7).
+6. Each scene object: id (lowercase, alphanumeric + dashes), templateId, start, duration, variables, an optional transitionInto field (see SCENE TRANSITIONS below), AND a required \`bound_sentence\` field (see #7).
 7. **bound_sentence**: a SUBSTRING (≥18 chars) of the SCRIPT THE AVATAR SPEAKS that this scene visualizes. The server checks this is actually present in the script. This is the contract that anchors every scene's content to spoken words — pick the sentence (or run of two sentences) the scene is visually narrating. Each scene gets exactly one bound_sentence; sentences should appear in order across scenes.
 8. Each scene's duration MUST be within the template's durationRange.
 9. Scenes must be contiguous: scene[0].start = 0, scene[i+1].start = scene[i].start + scene[i].duration. Last scene's end MUST equal plan.duration exactly.
 10. **Grounding rule**: every textual variable in a scene's variables block must draw from the bound_sentence's content OR from the offer/prospect data referenced by that sentence. Never invent numbers, claims, or quotes that the avatar doesn't say or imply.
 
 THE BIG IDEA: each scene VISUALIZES what the avatar is saying RIGHT THEN. The avatar speaks 4-7 sentences in 30 seconds; each gets one scene that illustrates its content. A stat-callout next to a sentence about "missed calls" should show a missed-call number, not the prospect's tenure. A chart-comparison next to a sentence about response time should chart response time, not made-up metrics.
+
+SCENE TRANSITIONS
+
+Each scene also has an optional transitionInto field that picks how that scene enters from the previous one. The compiler runs a 0.45s enter animation on the scene wrapper using the chosen style. Options:
+
+- "fade" — soft cross-fade. Default. Always use for the FIRST scene (no previous scene to transition from).
+- "whip-pan" — horizontal slide with motion blur. Use between fast-paced narrative beats (intro→headline, headline→stat).
+- "cross-warp-morph" — scale + slight rotation + blur. Use between data beats (stat→past-work-chart, chart-comparison→cta).
+- "cinematic-zoom" — slight push-in. ALWAYS use as the transitionInto for the CTA scene — it earns the close.
+- "flash-through-white" — bright white flash. Use SPARINGLY (max once per video, between scenes with very different visual weight).
+- "light-leak" — warm orange-red bloom sweep. Use SPARINGLY (max once per video), as a "moment" between a problem-stating scene and a solution-stating scene.
+
+Rules:
+- Never use the same transition twice in a row (whip-pan → whip-pan is jarring).
+- "flash-through-white" and "light-leak" together: max once per video each. Don't stack them.
+- First scene: transitionInto = "fade".
+- Last scene (cta-card-v1): transitionInto = "cinematic-zoom" by default.
+- Middle scenes: alternate between "whip-pan" and "cross-warp-morph" unless one of the special styles fits a specific narrative moment.
 
 SCENE SELECTION GUIDANCE
 - intro-v1: ALWAYS start with this. Greeting + company card.

@@ -77,6 +77,11 @@ const PLAN_SCHEMA = {
           start: { type: "number", minimum: 0 },
           duration: { type: "number", minimum: 0.5, maximum: 30 },
           variables: { type: "object" },
+          // Optional scene-entry transition style. Defaults to "fade".
+          transitionInto: {
+            type: "string",
+            enum: ["fade", "whip-pan", "cross-warp-morph", "cinematic-zoom", "flash-through-white", "light-leak"],
+          },
         },
       },
     },
@@ -223,6 +228,7 @@ export function compileComposition({ repoRoot, plan, outDir, branding, wordTimes
     instanceId: s.id,
     start: s.start,
     duration: s.duration,
+    transitionInto: s.transitionInto || "fade",
   }));
   const html = renderParent({
     plan,
@@ -520,6 +526,30 @@ ${layoutCss}
       height: var(--gz-h);
       overflow: hidden;
       z-index: 2;
+      will-change: opacity, transform, filter;
+      transform-origin: center center;
+      opacity: 0; /* hidden by default; master timeline fades in via the
+                     scene's enter transition. Prevents flash-of-content
+                     before GSAP first frame. */
+    }
+    .transition-overlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 30; /* above scenes, below captions */
+      opacity: 0;
+      will-change: opacity, transform;
+    }
+    .transition-flash {
+      background: #ffffff;
+    }
+    .transition-leak {
+      background:
+        radial-gradient(ellipse 60% 100% at 0% 50%, rgba(255, 180, 90, 0.8), transparent 70%),
+        radial-gradient(ellipse 40% 80% at 0% 50%, rgba(255, 80, 40, 0.6), transparent 60%);
+      mix-blend-mode: screen;
     }
     .wordmark {
       position: absolute;
@@ -643,6 +673,12 @@ ${branding?.senderCompany ? `    <div id="wordmark" class="wordmark clip" data-s
       <span class="dot"></span><span class="brand-name">${escapeHtml(branding.senderCompany)}</span>
     </div>` : ""}
 
+    <!-- Full-canvas transition overlays. Animated by the master timeline
+         when the planner picks flash-through-white or light-leak. Off-canvas
+         opacity:0 by default so they don't interfere with regular scenes. -->
+    <div id="transition-flash" class="transition-overlay transition-flash"></div>
+    <div id="transition-leak"  class="transition-overlay transition-leak"></div>
+
     ${(captionWindows || []).length ? `<div id="captions" class="captions">
 ${captionWindows.map((w, i) => `      <div class="caption-window clip" data-start="${w.start.toFixed(3)}" data-duration="${w.duration.toFixed(3)}" data-track-index="12">${escapeHtml(w.text)}</div>`).join("\n")}
     </div>` : ""}
@@ -650,7 +686,7 @@ ${captionWindows.map((w, i) => `      <div class="caption-window clip" data-star
     <!-- ===== Scenes ===== -->
 ${sceneFragments
   .map(
-    (frag) => `    <div class="scene-mount">
+    (frag, idx) => `    <div class="scene-mount" data-scene-mount="${masterTimelineMounts[idx].instanceId}">
 ${indent(frag, 6)}
     </div>`
   )
@@ -660,10 +696,10 @@ ${indent(frag, 6)}
 
   <script>
     // Assemble the master timeline: nest each scene's sub-timeline at its
-    // global start offset. The HyperFrames renderer seeks the timeline
-    // registered under the root composition id, which propagates seeks
-    // through the nested children. This is the ONLY timeline the renderer
-    // looks at — the per-scene registry entries are inputs to this step.
+    // global start offset, layering enter/exit transitions on the scene
+    // mount wrappers. The HyperFrames renderer seeks the timeline registered
+    // under the root composition id, which propagates seeks through the
+    // nested children.
     (function () {
       window.__timelines = window.__timelines || {};
       if (typeof gsap === "undefined") {
@@ -672,16 +708,137 @@ ${indent(frag, 6)}
       }
       const master = gsap.timeline({ paused: true });
       const mounts = ${JSON.stringify(masterTimelineMounts)};
+
+      // ----- Transition vocabulary -----
+      // Each entry: { enter(tl,el,at,dur), exit(tl,el,at,dur), overlay?(tl,overlayEl,at,dur) }
+      // dur is the per-side transition duration (default 0.45s).
+      // Overlay-based transitions (flash, light-leak) animate a separate
+      // full-canvas div on top of the scenes.
+      const TRANSITIONS = {
+        "fade": {
+          enter: function (tl, el, at, dur) {
+            tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: dur, ease: "power2.out" }, at);
+          },
+          exit: function (tl, el, at, dur) {
+            tl.to(el, { opacity: 0, duration: dur, ease: "power2.in" }, at);
+          },
+        },
+        "whip-pan": {
+          enter: function (tl, el, at, dur) {
+            tl.fromTo(el,
+              { opacity: 0, x: 220, filter: "blur(10px)" },
+              { opacity: 1, x: 0, filter: "blur(0px)", duration: dur, ease: "power3.out" }, at);
+          },
+          exit: function (tl, el, at, dur) {
+            tl.to(el,
+              { opacity: 0, x: -220, filter: "blur(10px)", duration: dur, ease: "power3.in" }, at);
+          },
+        },
+        "cross-warp-morph": {
+          enter: function (tl, el, at, dur) {
+            tl.fromTo(el,
+              { opacity: 0, scale: 1.08, rotation: 1.5, filter: "blur(6px)" },
+              { opacity: 1, scale: 1, rotation: 0, filter: "blur(0px)", duration: dur, ease: "power3.out" }, at);
+          },
+          exit: function (tl, el, at, dur) {
+            tl.to(el,
+              { opacity: 0, scale: 0.96, rotation: -1.5, filter: "blur(6px)", duration: dur, ease: "power3.in" }, at);
+          },
+        },
+        "cinematic-zoom": {
+          enter: function (tl, el, at, dur) {
+            tl.fromTo(el,
+              { opacity: 0, scale: 0.94 },
+              { opacity: 1, scale: 1, duration: dur, ease: "power2.out" }, at);
+          },
+          exit: function (tl, el, at, dur) {
+            tl.to(el,
+              { opacity: 0, scale: 1.04, filter: "blur(4px)", duration: dur, ease: "power2.in" }, at);
+          },
+        },
+        "flash-through-white": {
+          // Scenes fade normally; the white overlay does the heavy lifting.
+          enter: function (tl, el, at, dur) {
+            tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: dur, ease: "power2.out" }, at);
+          },
+          exit: function (tl, el, at, dur) {
+            tl.to(el, { opacity: 0, duration: dur, ease: "power2.in" }, at);
+          },
+          overlay: function (tl, overlayEl, at, dur) {
+            tl.fromTo(overlayEl,
+              { opacity: 0 },
+              { opacity: 1, duration: dur * 0.45, ease: "power3.out" }, at);
+            tl.to(overlayEl,
+              { opacity: 0, duration: dur * 0.55, ease: "power3.in" }, at + dur * 0.45);
+          },
+        },
+        "light-leak": {
+          enter: function (tl, el, at, dur) {
+            tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: dur, ease: "power2.out" }, at);
+          },
+          exit: function (tl, el, at, dur) {
+            tl.to(el, { opacity: 0, duration: dur, ease: "power2.in" }, at);
+          },
+          overlay: function (tl, overlayEl, at, dur) {
+            tl.fromTo(overlayEl,
+              { opacity: 0, x: -300, scale: 0.85 },
+              { opacity: 0.75, x: 0, scale: 1.05, duration: dur * 0.55, ease: "power3.out" }, at);
+            tl.to(overlayEl,
+              { opacity: 0, x: 300, duration: dur * 0.45, ease: "power3.in" }, at + dur * 0.55);
+          },
+        },
+      };
+
+      const TRANSITION_DUR = 0.45;
+
+      // Pre-hide all scene mounts so we don't see a frame of all-scenes-stacked
+      // before the master timeline plays.
+      mounts.forEach(function (m) {
+        const mount = document.querySelector('[data-scene-mount="' + m.instanceId + '"]');
+        if (mount) gsap.set(mount, { opacity: 0 });
+      });
+
+      // Layer enter/exit on each scene-mount, plus the per-transition overlay
+      // animations for the second scene onward (overlays only fire BETWEEN scenes).
+      mounts.forEach(function (m, idx) {
+        const mount = document.querySelector('[data-scene-mount="' + m.instanceId + '"]');
+        const tDef = TRANSITIONS[m.transitionInto] || TRANSITIONS.fade;
+        if (mount) {
+          tDef.enter(master, mount, m.start, TRANSITION_DUR);
+          if (idx < mounts.length - 1) {
+            tDef.exit(master, mount, m.start + m.duration - TRANSITION_DUR, TRANSITION_DUR);
+          } else {
+            // Last scene: fade out just before the composition ends so the
+            // final frame isn't a hard cut to black.
+            master.to(mount,
+              { opacity: 0, duration: TRANSITION_DUR, ease: "power2.in" },
+              m.start + m.duration - TRANSITION_DUR);
+          }
+        }
+        // Overlay (only for transitions that define one, only on scene >= 1)
+        if (tDef.overlay && idx > 0) {
+          const overlayId = m.transitionInto === "flash-through-white"
+            ? "transition-flash"
+            : "transition-leak";
+          const overlay = document.getElementById(overlayId);
+          if (overlay) {
+            tDef.overlay(master, overlay, m.start - TRANSITION_DUR * 0.4, TRANSITION_DUR * 1.4);
+          }
+        }
+      });
+
+      // Nest each scene's own timeline at its start. The scene's internal
+      // animations run INSIDE the mount, so they're invisible during the
+      // first 0.45s while the mount is fading/sliding in — that's expected.
       for (const m of mounts) {
         const child = window.__timelines[m.instanceId];
         if (child && typeof child.duration === "function") {
-          // Pad child to match the scene's mount duration so its final
-          // state holds for the entire time the scene is on screen.
           const pad = m.duration - child.duration();
           if (pad > 0.01) child.to({}, { duration: pad });
           master.add(child, m.start);
         }
       }
+
       window.__timelines[${JSON.stringify(compId)}] = master;
     })();
   </script>
