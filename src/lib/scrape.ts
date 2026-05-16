@@ -362,10 +362,14 @@ async function enrichWebsite(companyName: string | null): Promise<{
   const summary = websiteUrl ? await crawlHomepage(websiteUrl).catch(() => null) : null;
 
   const domain = websiteUrl ? domainFromUrl(websiteUrl) : null;
-  // Clearbit's free logo API was deprecated and `logo.clearbit.com` no
-  // longer resolves DNS. Until we wire up another provider, leave logoUrl
-  // null and let the composition's initials-fallback render in its place.
-  const logoUrl: string | null = null;
+  // Logo is pulled from the crawled homepage's <head> — apple-touch-icon
+  // first (square, on-brand, what designers actually upload as the site
+  // icon), then msapplication-TileImage / larger link[rel=icon] / og:image
+  // / smaller favicons, with a final HEAD-checked fallback to /apple-touch-
+  // icon.png and /favicon.ico at the site root for SMB CMSes that serve
+  // these by convention without declaring them. When everything misses,
+  // logoUrl stays null and the composition's initials-fallback renders.
+  const logoUrl = summary?.logoUrl ?? null;
 
   return { summary, websiteUrl, domain, logoUrl };
 }
