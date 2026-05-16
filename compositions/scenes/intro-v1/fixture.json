@@ -1,0 +1,11 @@
+{
+  "prospect_name": "Scott",
+  "prospect_company": "California Builder Services",
+  "prospect_company_descriptor": "DRE consulting · 35+ years",
+  "sender_name": "Annie",
+  "sender_company": "LeadFlow",
+  "company_logo_url": "",
+  "company_logo_fallback_text": "CBS",
+  "company_logo_fallback_color": "#1f3a5f",
+  "accent_color": "#DC2626"
+}

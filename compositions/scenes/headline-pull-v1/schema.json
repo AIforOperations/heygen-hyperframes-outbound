@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "headline-pull-v1",
+  "type": "object",
+  "required": ["headline"],
+  "additionalProperties": false,
+  "properties": {
+    "eyebrow": { "type": "string", "maxLength": 60 },
+    "headline": { "type": "string", "minLength": 1, "maxLength": 220 },
+    "highlight": { "type": "string", "maxLength": 60 },
+    "footnote": { "type": "string", "maxLength": 120 },
+    "accent_color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
+  }
+}

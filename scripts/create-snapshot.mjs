@@ -22,6 +22,12 @@ const SANDBOX_RESOURCES = { vcpus: 4 };
 const isVercelBuild = process.env.VERCEL === "1";
 const force = process.env.FORCE_SNAPSHOT === "1";
 
+// Hard skip — set when Sandbox usage is capped, deploy is content-only, etc.
+if (process.env.SKIP_SNAPSHOT === "1") {
+  console.log("[snapshot] skipped via SKIP_SNAPSHOT=1");
+  process.exit(0);
+}
+
 if (!isVercelBuild && !force) {
   console.log(
     "[snapshot] skipping — not running on Vercel. Set FORCE_SNAPSHOT=1 to run locally."

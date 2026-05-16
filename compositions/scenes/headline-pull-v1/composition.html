@@ -1,0 +1,256 @@
+<!--
+  Scene: headline-pull-v1
+  Category: headline-pull · Variant: editorial-quote
+  Duration range: 4–10s · Default: 6s
+
+  Layout:
+    - Eyebrow up top
+    - Large pull-quote headline (auto-wraps; if `highlight` provided we
+      add a CSS underline accent — Claude does NOT need to re-position it)
+    - Footnote at the bottom-left
+
+  Motion:
+    - eyebrow fades in
+    - headline slides up word-clumps via GSAP from-stagger
+    - footnote fades last
+-->
+<style>
+  #headline-pull-v1 {
+    background:
+      radial-gradient(ellipse 60% 50% at 80% 10%, rgba(220, 38, 38, 0.10), transparent 60%),
+      linear-gradient(135deg, var(--bg) 0%, var(--bg-2) 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  #headline-pull-v1 .ambient {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+  #headline-pull-v1 .ambient .mote {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0;
+  }
+  #headline-pull-v1 .ambient .m1 { top: 12%; right: 8%;  width: 22px; height: 22px; background: var(--accent); }
+  #headline-pull-v1 .ambient .m2 { top: 22%; right: 26%; width: 12px; height: 12px; background: var(--brand-red-light); }
+  #headline-pull-v1 .ambient .m3 { bottom: 18%; right: 14%; width: 16px; height: 16px; background: var(--accent); }
+  #headline-pull-v1 .ambient .m4 { top: 56%; right: 6%;  width: 10px; height: 10px; background: var(--brand-red-light); }
+  #headline-pull-v1 .ambient .m5 { bottom: 38%; right: 38%; width: 8px;  height: 8px;  background: var(--accent); }
+  /* Vertical bar that grows alongside the eyebrow */
+  #headline-pull-v1 .accent-bar {
+    position: absolute;
+    left: 0;
+    top: 28%;
+    width: 4px;
+    height: 0;
+    background: linear-gradient(180deg, var(--accent) 0%, var(--brand-red-light) 100%);
+    border-radius: 999px;
+    box-shadow: 0 0 16px rgba(220, 38, 38, 0.5);
+  }
+  /* Underline that draws under the last chunk after it appears */
+  #headline-pull-v1 .pull .chunk-highlight {
+    position: relative;
+  }
+  #headline-pull-v1 .pull .chunk-highlight::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0.04em;
+    height: 0.18em;
+    background: rgba(220, 38, 38, 0.35);
+    transform: scaleX(var(--hl-scale, 0));
+    transform-origin: left center;
+    border-radius: 4px;
+  }
+  #headline-pull-v1 .gz-safe {
+    align-content: space-between;
+    grid-template-rows: auto 1fr auto;
+  }
+  #headline-pull-v1 .eyebrow {
+    grid-column: span 8;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 22px;
+    font-weight: var(--weight-medium);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-2);
+  }
+  #headline-pull-v1 .eyebrow::before {
+    content: "";
+    width: 40px;
+    height: 2px;
+    background: var(--accent);
+  }
+  #headline-pull-v1 .pull {
+    grid-column: span 8;
+    font-size: 84px;
+    font-weight: var(--weight-bold);
+    line-height: 1.06;
+    letter-spacing: -0.022em;
+    color: var(--text);
+    align-self: center;
+    margin: 24px 0;
+  }
+  #headline-pull-v1 .pull .chunk {
+    display: inline-block;
+    white-space: nowrap;
+    margin-right: 0.18em;
+  }
+  #headline-pull-v1 .pull .hl {
+    background: linear-gradient(180deg, transparent 64%, rgba(220, 38, 38, 0.28) 64%);
+    padding: 0 4px;
+    color: var(--accent);
+    font-style: italic;
+  }
+  #headline-pull-v1 .footnote {
+    grid-column: span 8;
+    font-size: 24px;
+    color: var(--text-3);
+    border-top: 1px solid rgba(31, 26, 20, 0.10);
+    padding-top: 18px;
+  }
+</style>
+
+<div id="headline-pull-v1" class="graphics-zone clip"
+     data-composition-id="headline-pull-v1"
+     data-start="{{__scene_start__}}"
+     data-duration="{{__scene_duration__}}"
+     data-width="1096"
+     data-height="952"
+     style="--accent: {{accent_color}};">
+
+  <div class="accent-bar" aria-hidden="true"></div>
+
+  <div class="ambient" aria-hidden="true">
+    <span class="mote m1"></span>
+    <span class="mote m2"></span>
+    <span class="mote m3"></span>
+    <span class="mote m4"></span>
+    <span class="mote m5"></span>
+  </div>
+
+  <div class="gz-safe">
+    {{#eyebrow}}
+    <div class="eyebrow" data-iv-el="eyebrow">{{eyebrow}}</div>
+    {{/eyebrow}}
+
+    <div class="pull" data-iv-el="pull">
+      {{headline}}
+    </div>
+
+    {{#footnote}}
+    <div class="footnote" data-iv-el="footnote">{{footnote}}</div>
+    {{/footnote}}
+  </div>
+</div>
+
+<script data-scene="headline-pull-v1">
+  (function () {
+    window.__timelines = window.__timelines || {};
+    if (typeof gsap === "undefined") { window.__timelines["headline-pull-v1"] = null; return; }
+    const root = document.querySelector("#headline-pull-v1");
+    if (!root) { window.__timelines["headline-pull-v1"] = null; return; }
+
+    // Chunk the headline into groups of 2–3 words for staggered reveal
+    const pull = root.querySelector(".pull");
+    if (pull) {
+      const text = (pull.textContent || "").trim();
+      const words = text.split(/\s+/);
+      const chunkSize = words.length > 18 ? 3 : 2;
+      const chunks = [];
+      for (let i = 0; i < words.length; i += chunkSize) chunks.push(words.slice(i, i + chunkSize).join(" "));
+      pull.innerHTML = chunks.map(c => `<span class="chunk">${c}</span>`).join(" ");
+    }
+
+    const tl = gsap.timeline({ paused: true });
+    const accentBar = root.querySelector(".accent-bar");
+    const motes = root.querySelectorAll(".ambient .mote");
+
+    // Accent bar grows beside the eyebrow
+    if (accentBar) {
+      tl.fromTo(accentBar,
+        { height: 0, opacity: 0 },
+        { height: 180, opacity: 1, duration: 0.7, ease: "power3.out" }, 0);
+    }
+
+    tl.fromTo(root.querySelector(".eyebrow"),
+      { opacity: 0, x: -24 },
+      { opacity: 1, x: 0, duration: 0.45, ease: "power2.out" }, 0.1);
+
+    const chunks = root.querySelectorAll(".pull .chunk");
+    if (chunks.length) {
+      tl.fromTo(chunks,
+        { opacity: 0, y: 22, filter: "blur(8px)" },
+        { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.55, ease: "power3.out", stagger: 0.18 }, 0.35);
+    }
+
+    // Highlight the LAST chunk with a draw-on underline (the punchline)
+    if (chunks.length) {
+      const last = chunks[chunks.length - 1];
+      last.classList.add("chunk-highlight");
+      const startHL = 0.35 + (chunks.length - 1) * 0.18 + 0.4;
+      tl.to(last, {
+        duration: 0.6,
+        ease: "power2.out",
+        onStart: () => {
+          // Use a CSS variable trick: write scaleX of the ::after via inline style
+          last.style.setProperty("--hl-scale", "0");
+        },
+      }, startHL);
+      // Animate a proxy and apply to the ::after via custom property
+      const hl = { v: 0 };
+      tl.to(hl, {
+        v: 1,
+        duration: 0.55,
+        ease: "power2.out",
+        onUpdate: () => {
+          last.style.setProperty("--hl-scale", hl.v);
+        },
+      }, startHL);
+    }
+
+    const footnote = root.querySelector(".footnote");
+    if (footnote) {
+      tl.fromTo(footnote,
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, "-=0.2");
+    }
+
+    // Ambient motes — stagger in, then continuous drift to keep the frame alive
+    if (motes.length) {
+      motes.forEach((m, i) => {
+        tl.fromTo(m,
+          { opacity: 0, scale: 0.4 },
+          { opacity: 0.8, scale: 1, duration: 0.5, ease: "back.out(2)" }, 0.5 + i * 0.12);
+        const dx = (i % 2 === 0) ? -16 : 16;
+        const dy = (i < 3) ? 22 : -22;
+        tl.to(m, {
+          x: dx, y: dy,
+          duration: 2.8,
+          ease: "sine.inOut",
+          yoyo: true,
+          repeat: 2,
+        }, 1.0 + i * 0.08);
+      });
+    }
+
+    // Subtle accent-bar shimmer at the end
+    if (accentBar) {
+      tl.to(accentBar, {
+        scaleY: 1.15,
+        duration: 1.6,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: 2,
+        transformOrigin: "top center",
+      }, 1.4);
+    }
+
+    window.__timelines["headline-pull-v1"] = tl;
+  })();
+</script>

@@ -1,0 +1,82 @@
+/* Canvas + zone primitives.
+
+   The video is rendered at 1920×1080 (16:9). Two regions:
+
+   ┌──────────────────────────────────────────────────────────────┐
+   │                                                              │
+   │   AVATAR ZONE          GRAPHICS ZONE                         │
+   │   614×614              1096×952                              │
+   │   left:64 top:233      left:760 top:64                       │
+   │                                                              │
+   │   [ owned by parent ]  [ owned by scenes ]                   │
+   │                                                              │
+   └──────────────────────────────────────────────────────────────┘
+
+   Scenes draw ONLY inside .graphics-zone. The parent template owns the
+   avatar zone — scenes never know it exists.
+
+   Inside the graphics zone, scenes use a safe-area with 64px padding and
+   an 8-column grid (col gap 24px). Anchor your content to the grid, not
+   absolute pixels, so motion stays consistent across scenes. */
+
+:root {
+  /* Canvas */
+  --canvas-w: 1920px;
+  --canvas-h: 1080px;
+
+  /* Avatar zone (locked — DO NOT override in scenes) */
+  --avatar-x: 64px;
+  --avatar-y: 233px;
+  --avatar-size: 614px;
+
+  /* Graphics zone */
+  --gz-x: 760px;
+  --gz-y: 64px;
+  --gz-w: 1096px;
+  --gz-h: 952px;
+
+  /* Safe area inside graphics zone */
+  --gz-pad: 64px;
+  --safe-w: 968px;   /* gz-w - 2*pad */
+  --safe-h: 824px;   /* gz-h - 2*pad */
+
+  /* 8-col grid math (inside safe area, 24px col gap) */
+  --col-gap: 24px;
+  --col-w: 103px;    /* (safe-w - 7*gap) / 8 = (968-168)/8 = 100; rounded for breathing room */
+}
+
+/* Canvas reset — every composition uses this baseline */
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--text);
+}
+
+/* Scene root — drop this on any scene's outer wrapper */
+.graphics-zone {
+  position: relative;
+  width: var(--gz-w);
+  height: var(--gz-h);
+  overflow: hidden;
+}
+
+/* Safe-area container — content inside scenes anchors here */
+.gz-safe {
+  position: absolute;
+  inset: var(--gz-pad);
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: var(--col-gap);
+}
+
+/* Helpers for spanning columns inside .gz-safe */
+.col-1 { grid-column: span 1; }
+.col-2 { grid-column: span 2; }
+.col-3 { grid-column: span 3; }
+.col-4 { grid-column: span 4; }
+.col-5 { grid-column: span 5; }
+.col-6 { grid-column: span 6; }
+.col-7 { grid-column: span 7; }
+.col-8 { grid-column: span 8; }

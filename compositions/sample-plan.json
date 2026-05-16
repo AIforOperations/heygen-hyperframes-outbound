@@ -1,0 +1,36 @@
+{
+  "compositionId": "sample-plan-001",
+  "duration": 8,
+  "avatar": {
+    "avatarId": "Annie_Desk_Sitting_Front_2_public",
+    "videoPath": "video/render_2026-05-15T10-59-38-589Z_6506d1f1.mp4",
+    "crop": { "positionY": "30%", "scale": 1.25, "originY": "30%" }
+  },
+  "scenes": [
+    {
+      "id": "s1",
+      "templateId": "intro-v1",
+      "start": 0,
+      "duration": 3.5,
+      "variables": {
+        "prospect_name": "Jane Smith",
+        "sender_name": "Annie",
+        "sender_company": "AIforOperations",
+        "profile_image_url": ""
+      }
+    },
+    {
+      "id": "s2",
+      "templateId": "stat-callout-v1",
+      "start": 3.5,
+      "duration": 4.5,
+      "variables": {
+        "stat_value": "4.2s",
+        "stat_label": "Acme Corp's homepage mobile load time",
+        "stat_caption": "Industry benchmark: 1.8s",
+        "company_name": "Acme Corp",
+        "company_logo_url": ""
+      }
+    }
+  ]
+}

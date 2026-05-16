@@ -1,0 +1,86 @@
+{
+  "compositionId": "scott-leadflow-002",
+  "duration": 30.1,
+  "avatar": {
+    "avatarId": "Annie_Desk_Sitting_Front_2_public",
+    "videoPath": "video/heygen_10a570e6.mp4",
+    "crop": { "positionY": "30%", "scale": 1.25, "originY": "30%" }
+  },
+  "scenes": [
+    {
+      "id": "s1-intro",
+      "templateId": "intro-v1",
+      "start": 0,
+      "duration": 5,
+      "variables": {
+        "prospect_name": "Scott",
+        "prospect_company": "California Builder Services",
+        "prospect_company_descriptor": "DRE consulting · 35+ years",
+        "sender_name": "Annie",
+        "sender_company": "LeadFlow",
+        "company_logo_url": "",
+        "company_logo_fallback_text": "CBS",
+        "company_logo_fallback_color": "#1f3a5f"
+      }
+    },
+    {
+      "id": "s2-observation",
+      "templateId": "headline-pull-v1",
+      "start": 5,
+      "duration": 8,
+      "variables": {
+        "eyebrow": "What I noticed",
+        "headline": "You're hiring an administrative project assistant. The manual side of DRE is eating real time.",
+        "footnote": "Job post · this week"
+      }
+    },
+    {
+      "id": "s3-chart",
+      "templateId": "chart-comparison-v1",
+      "start": 13,
+      "duration": 7,
+      "variables": {
+        "eyebrow": "Where the time goes",
+        "metric_label": "Time to complete one DRE public report",
+        "rows": [
+          { "label": "Manual PDF filling", "value_display": "2-3h", "value_percent": 100 },
+          { "label": "With LeadFlow", "value_display": "5 min", "value_percent": 4, "highlight": true }
+        ],
+        "footnote": "From the same intake form. Same accuracy."
+      }
+    },
+    {
+      "id": "s4-offer",
+      "templateId": "form-autofill-v1",
+      "start": 20,
+      "duration": 7,
+      "variables": {
+        "eyebrow": "What I'll do",
+        "form_title": "DRE Public Report",
+        "source_label": "Your intake form",
+        "form_fields": [
+          { "label": "Subdivision name", "value": "Sierra Ridge Estates" },
+          { "label": "DRE file number", "value": "086-2026-04482" },
+          { "label": "Number of lots", "value": "142" },
+          { "label": "Project type", "value": "Standard subdivision" },
+          { "label": "Effective date", "value": "May 15, 2026" }
+        ],
+        "completion_label": "All forms filled",
+        "completion_time": "0:47"
+      }
+    },
+    {
+      "id": "s5-cta",
+      "templateId": "cta-card-v1",
+      "start": 27,
+      "duration": 3.1,
+      "variables": {
+        "cta_headline": "Just say yes.",
+        "cta_subline": "I'll get started.",
+        "sender_name": "Annie",
+        "sender_company": "LeadFlow",
+        "sender_email": "annie@leadflow.io"
+      }
+    }
+  ]
+}

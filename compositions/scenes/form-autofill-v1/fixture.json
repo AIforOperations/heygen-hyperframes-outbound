@@ -1,0 +1,15 @@
+{
+  "eyebrow": "Watch it work",
+  "form_title": "DRE Public Report",
+  "source_label": "Your intake form",
+  "form_fields": [
+    { "label": "Subdivision name", "value": "Sierra Ridge Estates" },
+    { "label": "DRE file number", "value": "086-2026-04482" },
+    { "label": "Number of lots", "value": "142" },
+    { "label": "Project type", "value": "Standard subdivision" },
+    { "label": "Effective date", "value": "May 15, 2026" }
+  ],
+  "completion_label": "All forms filled",
+  "completion_time": "0:47",
+  "accent_color": "#DC2626"
+}

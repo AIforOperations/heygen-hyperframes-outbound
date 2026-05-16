@@ -1,0 +1,33 @@
+{
+  "kind": "manual_hyperframes_composition",
+  "createdAt": "2026-05-15T17:22:00Z",
+  "source": "/tmp/chase-composition/",
+  "composition": {
+    "name": "chase-rsi",
+    "duration": 39.08,
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "quality": "standard"
+  },
+  "lead": {
+    "fullName": "Chase Garcia",
+    "linkedinUrl": "https://www.linkedin.com/in/chase-garcia-68b08b1ab",
+    "company": "Reserve Studies Inc.",
+    "companyDomain": "reservestudiesinc.com"
+  },
+  "avatar": {
+    "id": "Masha_sitting_office_front",
+    "engine": "avatar_v",
+    "rawHeyGenRender": "/tmp/chase-composition/assets/avatar.mp4"
+  },
+  "tonality": "vt_advisor",
+  "senderCompany": "LeadFlow",
+  "script": "Hi Chase, this is Masha from LeadFlow. Reserve Studies Inc. has been doing this since 1991, and each report you deliver pulls together field inspection data, cost estimates, and financial analysis into one finished document. That's a lot of manual assembly per client. We've built a document automation system for compliance firms that cuts three to four hours of paperwork per client report. I'd set it up around your exact workflow and run it on your next report completely free, within 48 hours. If it saves you the time, we talk. If not, no obligation. Just say yes and I'll get started, Chase.",
+  "notes": [
+    "Hand-built HyperFrames composition (not yet wired into scripts/build-composition.mjs).",
+    "8 cards timed to spoken word boundaries from ElevenLabs Scribe sidecar.",
+    "RSI logo + 'FOR' personalization bug visible during company-specific beats.",
+    "Workflow list (Field inspection / Cost estimates / Financial analysis) maps to script lines 3-5."
+  ]
+}

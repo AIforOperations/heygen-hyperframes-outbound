@@ -1,0 +1,333 @@
+<!--
+  Scene: form-autofill-v1
+  Category: process · Variant: live-autofill
+
+  A literal demo of LeadFlow's product: a DRE form auto-populating field by
+  field while a top progress bar fills 0% → 100%. Each row has three beats:
+  label fades in → value slides in → green check stamps. Closes with a
+  completion pill ("All forms filled · 0:47") sliding in from the right.
+
+  Plays well for 6–10 seconds of script narration.
+
+  Visual rules:
+    - Centerpiece: one tall form card filling the safe area
+    - Color contract: red progress + red highlight, dark text, green checks
+    - Animation: GSAP timeline (registered in window.__timelines), nested
+      into the parent master at compile time
+-->
+<style>
+  #form-autofill-v1 {
+    background:
+      radial-gradient(ellipse 60% 50% at 90% 0%, rgba(220, 38, 38, 0.10), transparent 60%),
+      linear-gradient(135deg, var(--bg) 0%, var(--bg-2) 100%);
+  }
+  #form-autofill-v1 .gz-safe {
+    align-content: start;
+    grid-template-rows: auto 1fr auto;
+    row-gap: 24px;
+  }
+  #form-autofill-v1 .eyebrow {
+    grid-column: span 8;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  #form-autofill-v1 .eyebrow::before {
+    content: "";
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 6px rgba(220, 38, 38, 0.18);
+  }
+  #form-autofill-v1 .form-card {
+    grid-column: span 8;
+    background: white;
+    border-radius: 24px;
+    box-shadow:
+      0 1px 0 0 rgba(0, 0, 0, 0.04) inset,
+      0 18px 50px rgba(80, 30, 10, 0.10),
+      0 4px 14px rgba(80, 30, 10, 0.06);
+    overflow: hidden;
+    position: relative;
+    align-self: start;
+  }
+  #form-autofill-v1 .form-progress {
+    position: absolute;
+    inset: 0 auto auto 0;
+    height: 5px;
+    width: 100%;
+    background: rgba(220, 38, 38, 0.10);
+  }
+  #form-autofill-v1 .form-progress-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    height: 100%;
+    width: calc(var(--p, 0) * 1%);
+    background: linear-gradient(90deg, var(--accent) 0%, var(--brand-red-light) 100%);
+    box-shadow: 0 0 12px rgba(220, 38, 38, 0.55);
+  }
+  #form-autofill-v1 .form-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 26px 36px 18px 36px;
+    border-bottom: 1px solid rgba(31, 26, 20, 0.08);
+  }
+  #form-autofill-v1 .form-title {
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: var(--text);
+  }
+  #form-autofill-v1 .form-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 14px;
+    color: var(--text-2);
+  }
+  #form-autofill-v1 .form-meta-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(220, 38, 38, 0.5);
+    animation: pulseDot 1.2s ease-out infinite;
+  }
+  @keyframes pulseDot {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.5); opacity: 0.5; }
+  }
+  #form-autofill-v1 .form-rows {
+    padding: 8px 0;
+  }
+  #form-autofill-v1 .row {
+    display: grid;
+    grid-template-columns: 280px 1fr 44px;
+    align-items: center;
+    gap: 28px;
+    padding: 14px 36px;
+    border-bottom: 1px solid rgba(31, 26, 20, 0.05);
+  }
+  #form-autofill-v1 .row:last-child { border-bottom: none; }
+  #form-autofill-v1 .row-label {
+    font-size: 20px;
+    color: var(--text-2);
+    font-weight: 500;
+  }
+  #form-autofill-v1 .row-value {
+    font-size: 24px;
+    color: var(--text);
+    font-weight: 600;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    letter-spacing: -0.01em;
+    /* Reveal mask animated via clip-path */
+    clip-path: inset(0 100% 0 0);
+  }
+  #form-autofill-v1 .row.filled .row-value-caret {
+    display: none;
+  }
+  #form-autofill-v1 .row-value-caret {
+    display: inline-block;
+    width: 2px;
+    height: 22px;
+    background: var(--accent);
+    margin-left: 4px;
+    vertical-align: middle;
+    animation: caretBlink 0.65s steps(2) infinite;
+  }
+  @keyframes caretBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+  #form-autofill-v1 .check {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #16A34A;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.30);
+  }
+  #form-autofill-v1 .check svg {
+    width: 18px;
+    height: 18px;
+  }
+  #form-autofill-v1 .completion {
+    grid-column: span 8;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 18px 24px;
+    background: var(--accent);
+    color: white;
+    border-radius: 16px;
+    box-shadow: 0 12px 30px rgba(220, 38, 38, 0.28);
+    align-self: end;
+    width: fit-content;
+    justify-self: end;
+  }
+  #form-autofill-v1 .completion-label {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  #form-autofill-v1 .completion-time {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 22px;
+    font-weight: 700;
+    padding: 4px 10px;
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+  }
+  /* Background data motes — subtle particles flying right-to-left toward the form */
+  #form-autofill-v1 .mote {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    opacity: 0;
+    pointer-events: none;
+  }
+  #form-autofill-v1 .motes {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    z-index: 0;
+    pointer-events: none;
+  }
+</style>
+
+<div id="form-autofill-v1" class="graphics-zone clip"
+     data-composition-id="form-autofill-v1"
+     data-start="{{__scene_start__}}"
+     data-duration="{{__scene_duration__}}"
+     data-width="1096"
+     data-height="952"
+     style="--accent: {{accent_color}};">
+
+  <div class="motes" data-iv-el="motes" aria-hidden="true">
+    <span class="mote" style="top: 18%; left: 80%;"></span>
+    <span class="mote" style="top: 32%; left: 86%;"></span>
+    <span class="mote" style="top: 48%; left: 78%;"></span>
+    <span class="mote" style="top: 64%; left: 88%;"></span>
+    <span class="mote" style="top: 76%; left: 82%;"></span>
+  </div>
+
+  <div class="gz-safe">
+    {{#eyebrow}}
+    <div class="eyebrow" data-iv-el="eyebrow">{{eyebrow}}</div>
+    {{/eyebrow}}
+
+    <div class="form-card" data-iv-el="card">
+      <div class="form-progress"><div class="form-progress-fill" data-iv-el="progress-fill"></div></div>
+      <div class="form-header">
+        <div class="form-title">{{form_title}}</div>
+        <div class="form-meta">
+          <span class="form-meta-dot"></span>
+          <span data-iv-el="meta-text">{{source_label}}</span>
+        </div>
+      </div>
+      <div class="form-rows" data-iv-el="rows">
+        {{{__rows__}}}
+      </div>
+    </div>
+
+    {{#completion_label}}
+    <div class="completion" data-iv-el="completion">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      <span class="completion-label">{{completion_label}}</span>
+      {{#completion_time}}
+      <span class="completion-time">{{completion_time}}</span>
+      {{/completion_time}}
+    </div>
+    {{/completion_label}}
+  </div>
+</div>
+
+<script data-scene="form-autofill-v1">
+  (function () {
+    window.__timelines = window.__timelines || {};
+    if (typeof gsap === "undefined") { window.__timelines["form-autofill-v1"] = null; return; }
+    const root = document.querySelector("#form-autofill-v1");
+    if (!root) { window.__timelines["form-autofill-v1"] = null; return; }
+
+    const tl = gsap.timeline({ paused: true });
+    const eyebrow = root.querySelector(".eyebrow");
+    const card = root.querySelector(".form-card");
+    const fill = root.querySelector(".form-progress-fill");
+    const rows = root.querySelectorAll(".row");
+    const completion = root.querySelector(".completion");
+    const motes = root.querySelectorAll(".mote");
+
+    // Initial entry
+    if (eyebrow) tl.fromTo(eyebrow,
+      { opacity: 0, x: -18 },
+      { opacity: 1, x: 0, duration: 0.4, ease: "power2.out" }, 0);
+    tl.fromTo(card,
+      { opacity: 0, y: 24, scale: 0.97 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: "power3.out" }, 0.2);
+
+    // Progress bar fills in parallel with row reveals
+    const totalRowsTime = 0.35 * rows.length;
+    const proxy = { v: 0 };
+    tl.to(proxy, {
+      v: 100,
+      duration: totalRowsTime,
+      ease: "power1.inOut",
+      onUpdate: () => { fill.style.setProperty("--p", proxy.v); },
+    }, 0.75);
+
+    // Floating motes (data particles)
+    motes.forEach((m, i) => {
+      tl.fromTo(m,
+        { opacity: 0, x: 0, scale: 0.6 },
+        { opacity: 0.7, x: -80, scale: 1, duration: 0.6, ease: "power1.out" },
+        0.4 + i * 0.08);
+      tl.to(m,
+        { opacity: 0, x: -160, duration: 0.5, ease: "power1.in" },
+        0.9 + i * 0.08);
+    });
+
+    // Per-row staggered reveal
+    rows.forEach((row, i) => {
+      const at = 0.85 + i * 0.35;
+      const label = row.querySelector(".row-label");
+      const value = row.querySelector(".row-value");
+      const check = row.querySelector(".check");
+
+      tl.fromTo(label,
+        { opacity: 0, x: -10 },
+        { opacity: 1, x: 0, duration: 0.25, ease: "power2.out" }, at);
+      // Reveal value via clip-path (typewriter-ish wipe)
+      tl.fromTo(value,
+        { clipPath: "inset(0 100% 0 0)" },
+        { clipPath: "inset(0 0% 0 0)", duration: 0.32, ease: "power2.out" }, at + 0.12);
+      // Stamp the check
+      tl.fromTo(check,
+        { opacity: 0, scale: 0.3 },
+        { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2)" }, at + 0.32);
+    });
+
+    // Completion pill
+    if (completion) {
+      const after = 0.85 + rows.length * 0.35 + 0.1;
+      tl.fromTo(completion,
+        { opacity: 0, x: 40, scale: 0.9 },
+        { opacity: 1, x: 0, scale: 1, duration: 0.5, ease: "back.out(1.6)" }, after);
+    }
+
+    window.__timelines["form-autofill-v1"] = tl;
+  })();
+</script>

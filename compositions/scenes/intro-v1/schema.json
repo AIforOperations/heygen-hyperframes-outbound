@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "intro-v1",
+  "type": "object",
+  "required": ["prospect_name", "prospect_company", "sender_name", "sender_company"],
+  "additionalProperties": false,
+  "properties": {
+    "prospect_name": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "prospect_company": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "prospect_company_descriptor": { "type": "string", "maxLength": 80 },
+    "sender_name": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "sender_company": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "company_logo_url": { "type": "string" },
+    "company_logo_fallback_text": { "type": "string", "maxLength": 4 },
+    "company_logo_fallback_color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+    "accent_color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
+  }
+}

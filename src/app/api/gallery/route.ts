@@ -22,8 +22,17 @@ function accentForIndex(i: number): string {
   return ACCENTS[i % ACCENTS.length];
 }
 
+// Job IDs to hide from the gallery (broken framing, test artifacts, etc).
+// The underlying job records are NOT deleted — the other thread can keep
+// iterating on them. Remove from this set when a fix lands.
+const HIDDEN_JOB_IDS = new Set<string>([
+  "sts_RNQQCQTtLur2",
+  "etYmHrskfFCAK6hl",
+]);
+
 export async function GET() {
-  const jobs = (await listCompletedJobs(20)) ?? [];
+  const allJobs = (await listCompletedJobs(20)) ?? [];
+  const jobs = allJobs.filter((j) => !HIDDEN_JOB_IDS.has(j.jobId));
 
   const dynamic: GalleryEntry[] = jobs.map((j, i) => {
     const lead = j.lead;

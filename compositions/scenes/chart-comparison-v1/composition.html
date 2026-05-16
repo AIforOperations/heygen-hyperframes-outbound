@@ -1,0 +1,171 @@
+<style>
+  #chart-comparison-v1 {
+    background:
+      radial-gradient(ellipse 60% 50% at 90% 10%, rgba(220, 38, 38, 0.08), transparent 60%),
+      linear-gradient(135deg, var(--bg) 0%, var(--bg-2) 100%);
+  }
+  #chart-comparison-v1 .gz-safe {
+    align-content: start;
+    grid-template-rows: auto auto 1fr auto;
+    row-gap: 28px;
+  }
+  #chart-comparison-v1 .eyebrow {
+    grid-column: span 8;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  #chart-comparison-v1 .eyebrow::before {
+    content: "";
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 6px rgba(220, 38, 38, 0.18);
+  }
+  #chart-comparison-v1 .metric-label {
+    grid-column: span 8;
+    font-size: 44px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.1;
+    letter-spacing: -0.018em;
+  }
+  #chart-comparison-v1 .chart {
+    grid-column: span 8;
+    align-self: center;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    margin-top: 12px;
+  }
+  #chart-comparison-v1 .row {
+    display: grid;
+    grid-template-columns: 280px 1fr 140px;
+    align-items: center;
+    gap: 28px;
+  }
+  #chart-comparison-v1 .row-label {
+    font-size: 26px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  #chart-comparison-v1 .row.highlight .row-label {
+    color: var(--accent);
+    font-weight: 700;
+  }
+  #chart-comparison-v1 .bar-track {
+    position: relative;
+    height: 36px;
+    background: rgba(31, 26, 20, 0.06);
+    border-radius: 18px;
+    overflow: hidden;
+  }
+  #chart-comparison-v1 .bar-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    height: 100%;
+    width: calc(var(--pct, 0) * 1%);
+    background: linear-gradient(90deg, rgba(31, 26, 20, 0.55), rgba(31, 26, 20, 0.32));
+    border-radius: 18px;
+  }
+  #chart-comparison-v1 .row.highlight .bar-fill {
+    background: linear-gradient(90deg, var(--accent) 0%, var(--brand-red-light) 100%);
+    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.28);
+  }
+  #chart-comparison-v1 .row-value {
+    font-size: 44px;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    text-align: right;
+  }
+  #chart-comparison-v1 .row.highlight .row-value {
+    color: var(--accent);
+  }
+  #chart-comparison-v1 .footnote {
+    grid-column: span 8;
+    font-size: 24px;
+    color: var(--text-2);
+    border-top: 1px solid rgba(31, 26, 20, 0.10);
+    padding-top: 18px;
+    align-self: end;
+  }
+</style>
+
+<div id="chart-comparison-v1" class="graphics-zone clip"
+     data-composition-id="chart-comparison-v1"
+     data-start="{{__scene_start__}}"
+     data-duration="{{__scene_duration__}}"
+     data-width="1096"
+     data-height="952"
+     style="--accent: {{accent_color}};">
+
+  <div class="gz-safe">
+    <div class="eyebrow">{{eyebrow}}</div>
+    <div class="metric-label">{{metric_label}}</div>
+
+    <div class="chart">
+      {{{__rows__}}}
+    </div>
+
+    {{#footnote}}
+    <div class="footnote">{{footnote}}</div>
+    {{/footnote}}
+  </div>
+</div>
+
+<script data-scene="chart-comparison-v1">
+  (function () {
+    window.__timelines = window.__timelines || {};
+    if (typeof gsap === "undefined") { window.__timelines["chart-comparison-v1"] = null; return; }
+    const root = document.querySelector("#chart-comparison-v1");
+    if (!root) { window.__timelines["chart-comparison-v1"] = null; return; }
+
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo(root.querySelector(".eyebrow"),
+      { opacity: 0, x: -20 },
+      { opacity: 1, x: 0, duration: 0.4, ease: "power2.out" }, 0);
+    tl.fromTo(root.querySelector(".metric-label"),
+      { opacity: 0, y: 14 },
+      { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.15);
+
+    // Stagger rows in, then animate bar fills + count-up the value
+    const rows = root.querySelectorAll(".row");
+    rows.forEach((row, i) => {
+      const at = 0.45 + i * 0.25;
+      tl.fromTo(row,
+        { opacity: 0, y: 18 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, at);
+      const fill = row.querySelector(".bar-fill");
+      if (fill) {
+        const target = parseFloat(fill.style.getPropertyValue("--pct")) || 0;
+        // Animate from 0 → target via a CSS variable so the existing
+        // `width: calc(var(--pct) * 1%)` follows.
+        const proxy = { v: 0 };
+        tl.to(proxy, {
+          v: target,
+          duration: 0.9,
+          ease: "power2.out",
+          onUpdate: () => { fill.style.setProperty("--pct", proxy.v); },
+        }, at + 0.1);
+      }
+      const value = row.querySelector(".row-value");
+      if (value) {
+        tl.fromTo(value,
+          { opacity: 0, scale: 0.85 },
+          { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(1.4)" }, at + 0.7);
+      }
+    });
+
+    const fn = root.querySelector(".footnote");
+    if (fn) tl.fromTo(fn, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4 }, "-=0.2");
+
+    window.__timelines["chart-comparison-v1"] = tl;
+  })();
+</script>

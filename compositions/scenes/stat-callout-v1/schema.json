@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "stat-callout-v1",
+  "type": "object",
+  "required": ["stat_value", "stat_label"],
+  "additionalProperties": false,
+  "properties": {
+    "stat_value": { "type": "string", "minLength": 1, "maxLength": 12 },
+    "stat_label": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "stat_caption": { "type": "string", "maxLength": 60 },
+    "company_logo_url": { "type": "string" },
+    "company_name": { "type": "string", "maxLength": 80 },
+    "accent_color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
+  }
+}

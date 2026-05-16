@@ -1,0 +1,102 @@
+{
+  "$schemaVersion": 1,
+  "categories": ["intro", "stat-callout", "comparison", "profile-card", "headline-pull", "cta-card", "transition"],
+  "motionStyles": ["fade", "slide-right", "scale-pop", "type-on", "mask-wipe"],
+  "accents": ["red", "light-red", "mono"],
+  "densities": ["sparse", "medium", "busy"],
+  "imageVarConvention": [
+    "Every <image_url> variable in a scene gets companion <image>_fallback_text and <image>_fallback_color fields.",
+    "The compiler fills these automatically when the URL is missing or empty.",
+    "Scenes must render the fallback path when the URL is empty."
+  ],
+  "scenes": [
+    {
+      "id": "intro-v1",
+      "category": "intro",
+      "variant": "company-card",
+      "motion": "fade",
+      "density": "sparse",
+      "accent": "red",
+      "durationRange": [3, 8],
+      "defaultDuration": 5,
+      "schema": "scenes/intro-v1/schema.json",
+      "fixture": "scenes/intro-v1/fixture.json",
+      "imagery": {
+        "company_logo_url": "company_logo_square_84x84"
+      },
+      "description": "Opening hello — prospect's company logo card on top, greeting below. Use as the first scene."
+    },
+    {
+      "id": "stat-callout-v1",
+      "category": "stat-callout",
+      "variant": "big-number",
+      "motion": "scale-pop",
+      "density": "sparse",
+      "accent": "red",
+      "durationRange": [4, 11],
+      "defaultDuration": 5,
+      "schema": "scenes/stat-callout-v1/schema.json",
+      "fixture": "scenes/stat-callout-v1/fixture.json",
+      "imagery": {
+        "company_logo_url": "company_logo_wide_800x400"
+      },
+      "description": "Single big number + label + caption. Use to drop a researched stat about the prospect's company."
+    },
+    {
+      "id": "headline-pull-v1",
+      "category": "headline-pull",
+      "variant": "editorial-quote",
+      "motion": "fade-up",
+      "density": "sparse",
+      "accent": "red",
+      "durationRange": [4, 15],
+      "defaultDuration": 6,
+      "schema": "scenes/headline-pull-v1/schema.json",
+      "fixture": "scenes/headline-pull-v1/fixture.json",
+      "imagery": {},
+      "description": "Large pull-quote headline with eyebrow and footnote. Use for observations / framing the problem."
+    },
+    {
+      "id": "chart-comparison-v1",
+      "category": "comparison",
+      "variant": "horizontal-bar",
+      "motion": "fade",
+      "density": "medium",
+      "accent": "red",
+      "durationRange": [5, 12],
+      "defaultDuration": 7,
+      "schema": "scenes/chart-comparison-v1/schema.json",
+      "fixture": "scenes/chart-comparison-v1/fixture.json",
+      "imagery": {},
+      "description": "Horizontal bar comparison chart with 2–4 rows. Use to show before/after, manual vs automated, you vs benchmark. Mark the winning row highlight:true."
+    },
+    {
+      "id": "form-autofill-v1",
+      "category": "process",
+      "variant": "live-autofill",
+      "motion": "stagger-stamp",
+      "density": "busy",
+      "accent": "red",
+      "durationRange": [6, 12],
+      "defaultDuration": 8,
+      "schema": "scenes/form-autofill-v1/schema.json",
+      "fixture": "scenes/form-autofill-v1/fixture.json",
+      "imagery": {},
+      "description": "Live form being auto-filled field-by-field with a progress bar at the top and a green checkmark stamping in after each value. Closes with a completion pill (e.g., 'All forms filled · 0:47'). Use when you want to VISUALLY demonstrate an automated data-entry / processing / autofill product. Highly explanatory — viewer sees the product working."
+    },
+    {
+      "id": "cta-card-v1",
+      "category": "cta-card",
+      "variant": "hero-statement",
+      "motion": "scale-pop",
+      "density": "sparse",
+      "accent": "red",
+      "durationRange": [3, 10],
+      "defaultDuration": 5,
+      "schema": "scenes/cta-card-v1/schema.json",
+      "fixture": "scenes/cta-card-v1/fixture.json",
+      "imagery": {},
+      "description": "Closing CTA with sender signature. Use as the final scene."
+    }
+  ]
+}

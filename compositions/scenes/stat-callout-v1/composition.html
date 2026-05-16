@@ -1,0 +1,127 @@
+<!--
+  Scene: stat-callout-v1
+  Category: stat-callout · Variant: big-number
+  Duration range: 4–6s · Default: 5s
+
+  Layout:
+    - Top row: company chip (logo or wordmark)
+    - Center: massive stat value
+    - Below: stat label
+    - Bottom: caption (benchmark / context)
+
+  Motion (GSAP):
+    - 0.0s  company chip slides in from left
+    - 0.2s  stat value scales from 0.85 with type-on
+    - 0.6s  label fades up
+    - 1.0s  caption fades
+-->
+<style>
+  #stat-callout-v1 {
+    background: linear-gradient(135deg, var(--bg) 0%, var(--bg-3) 100%);
+  }
+  #stat-callout-v1 .gz-safe {
+    align-content: start;
+    grid-template-rows: auto 1fr auto;
+  }
+  #stat-callout-v1 .chip {
+    grid-column: span 8;
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 22px;
+    background: white;
+    border-radius: 999px;
+    box-shadow: var(--shadow-card);
+    align-self: start;
+    justify-self: start;
+    max-width: fit-content;
+    font-size: 24px;
+    font-weight: var(--weight-medium);
+    color: var(--text);
+  }
+  #stat-callout-v1 .chip img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+  }
+  #stat-callout-v1 .chip .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  #stat-callout-v1 .stat-block {
+    grid-column: span 8;
+    align-self: center;
+    margin-top: 40px;
+  }
+  #stat-callout-v1 .stat-value {
+    font-size: 240px;
+    font-weight: var(--weight-black);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    color: var(--accent);
+    margin: 0;
+  }
+  #stat-callout-v1 .stat-label {
+    font-size: 40px;
+    font-weight: var(--weight-medium);
+    line-height: 1.2;
+    color: var(--text);
+    margin: 24px 0 0 0;
+    max-width: 820px;
+  }
+  #stat-callout-v1 .stat-caption {
+    grid-column: span 8;
+    font-size: 24px;
+    font-weight: var(--weight-regular);
+    color: var(--text-2);
+    align-self: end;
+    border-top: 1px solid rgba(31, 26, 20, 0.12);
+    padding-top: 20px;
+  }
+</style>
+
+<div id="stat-callout-v1" class="graphics-zone clip"
+     data-composition-id="stat-callout-v1"
+     data-start="{{__scene_start__}}"
+     data-duration="{{__scene_duration__}}"
+     data-width="1096"
+     data-height="952"
+     style="--accent: {{accent_color}};">
+
+  <div class="gz-safe">
+    <div class="chip" data-iv-el="chip">
+      {{#company_logo_url}}
+        <img src="{{company_logo_url}}" alt="" />
+      {{/company_logo_url}}
+      {{^company_logo_url}}
+        <span class="dot"></span>
+      {{/company_logo_url}}
+      <span>{{company_name}}</span>
+    </div>
+
+    <div class="stat-block">
+      <div class="stat-value" data-iv-el="value">{{stat_value}}</div>
+      <div class="stat-label" data-iv-el="label">{{stat_label}}</div>
+    </div>
+
+    <div class="stat-caption" data-iv-el="caption">{{stat_caption}}</div>
+  </div>
+</div>
+
+<script data-scene="stat-callout-v1">
+  (function () {
+    window.__timelines = window.__timelines || {};
+    if (typeof gsap === "undefined") { window.__timelines["stat-callout-v1"] = null; return; }
+    const root = document.querySelector("#stat-callout-v1");
+    if (!root) { window.__timelines["stat-callout-v1"] = null; return; }
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo(root.querySelector(".chip"), { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.45, ease: "power2.out" }, 0);
+    tl.fromTo(root.querySelector(".stat-value"), { opacity: 0, scale: 0.78 }, { opacity: 1, scale: 1, duration: 0.65, ease: "back.out(1.6)" }, 0.2);
+    tl.fromTo(root.querySelector(".stat-label"), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" }, 0.55);
+    const cap = root.querySelector(".stat-caption");
+    if (cap) tl.fromTo(cap, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4 }, 0.9);
+    window.__timelines["stat-callout-v1"] = tl;
+  })();
+</script>

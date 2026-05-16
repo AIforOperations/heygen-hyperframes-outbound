@@ -1,0 +1,10 @@
+{
+  "eyebrow": "Where the time goes",
+  "metric_label": "Hours per DRE project",
+  "rows": [
+    { "label": "Manual PDF filling", "value_display": "2-3h", "value_percent": 100 },
+    { "label": "With LeadFlow", "value_display": "5 min", "value_percent": 4, "highlight": true }
+  ],
+  "footnote": "Same accuracy. 30× faster.",
+  "accent_color": "#DC2626"
+}

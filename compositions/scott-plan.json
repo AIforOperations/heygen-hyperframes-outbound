@@ -1,0 +1,71 @@
+{
+  "compositionId": "scott-leadflow-001",
+  "duration": 44.5,
+  "avatar": {
+    "avatarId": "Annie_Desk_Sitting_Front_2_public",
+    "videoPath": "video/heygen_latest_ba43383c.mp4",
+    "crop": { "positionY": "30%", "scale": 1.25, "originY": "30%" }
+  },
+  "scenes": [
+    {
+      "id": "s1-intro",
+      "templateId": "intro-v1",
+      "start": 0,
+      "duration": 5,
+      "variables": {
+        "prospect_name": "Scott",
+        "sender_name": "Annie",
+        "sender_company": "LeadFlow",
+        "profile_image_url": ""
+      }
+    },
+    {
+      "id": "s2-observation",
+      "templateId": "headline-pull-v1",
+      "start": 5,
+      "duration": 10,
+      "variables": {
+        "eyebrow": "What I noticed",
+        "headline": "You're hiring an administrative project assistant. The manual side of your operation is stretched.",
+        "footnote": "DRE shops growing the way yours is"
+      }
+    },
+    {
+      "id": "s3-stat",
+      "templateId": "stat-callout-v1",
+      "start": 15,
+      "duration": 10,
+      "variables": {
+        "stat_value": "2-3h",
+        "stat_label": "per project, moving intake data into the DRE public report PDFs",
+        "stat_caption": "That's the real bottleneck — not the consultant work",
+        "company_name": "DRE shops",
+        "company_logo_url": ""
+      }
+    },
+    {
+      "id": "s4-offer",
+      "templateId": "headline-pull-v1",
+      "start": 25,
+      "duration": 14,
+      "variables": {
+        "eyebrow": "The offer",
+        "headline": "I'll take your next real project and autofill the complete DRE PDFs in 48 hours. Free.",
+        "footnote": "You keep the output no matter what"
+      }
+    },
+    {
+      "id": "s5-cta",
+      "templateId": "cta-card-v1",
+      "start": 39,
+      "duration": 5.5,
+      "variables": {
+        "cta_headline": "Just say yes.",
+        "cta_subline": "I'll get started today. Zero obligation.",
+        "sender_name": "Annie",
+        "sender_company": "LeadFlow",
+        "sender_email": "annie@leadflow.io"
+      }
+    }
+  ]
+}
