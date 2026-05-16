@@ -6,6 +6,7 @@ import { CURATED_AVATARS } from "./avatars";
 import type { Lead } from "./scrape";
 import { collectCompositionFiles, type SandboxFile } from "./composition-files";
 import { generateScenePlan } from "./planner";
+import type { ElevenLabsWord } from "./elevenlabs";
 // Static relative import — Next.js / Turbopack can resolve this at build
 // time. The .mjs uses Ajv internally; that's why we added ajv + ajv-formats
 // to package.json. compileComposition still reads compositions/registry.json
@@ -20,6 +21,7 @@ interface CompileFn {
     plan: unknown;
     outDir: string;
     branding?: { senderName?: string; senderCompany?: string };
+    wordTimestamps?: ElevenLabsWord[];
   }): {
     outDir: string;
     scenes: number;
@@ -55,6 +57,9 @@ export interface CompositionV2Input {
   senderCompany: string;
   scriptText?: string;
   offer?: string;
+  /** Word-level timestamps from ElevenLabs Scribe. When present, the
+   *  compiler emits a bottom-right captions track timed to these. */
+  wordTimestamps?: ElevenLabsWord[];
 }
 
 export async function buildCompositionV2(input: CompositionV2Input): Promise<SandboxFile[]> {
@@ -113,6 +118,7 @@ export async function buildCompositionV2(input: CompositionV2Input): Promise<San
       senderName: input.senderName,
       senderCompany: input.senderCompany,
     },
+    wordTimestamps: input.wordTimestamps,
   });
 
   // Walk the compiled directory back into in-memory SandboxFile[].

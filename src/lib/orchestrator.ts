@@ -619,9 +619,10 @@ async function stagePostHeygen(job: JobState): Promise<JobState> {
     avatarId: job.input.avatarId,
     lead: job.lead,
     senderName: job.input.senderName,
-    senderCompany: job.input.senderCompany || "LeadFlow",
+    senderCompany: job.input.senderCompany || "",
     scriptText: job.scriptText,
     offer: job.input.offer,
+    wordTimestamps: transcription.words,
   });
   working = {
     ...working,

@@ -84,7 +84,7 @@ const PLAN_SCHEMA = {
 };
 
 // ---------- Public API ----------
-export function compileComposition({ repoRoot, plan, outDir, branding }) {
+export function compileComposition({ repoRoot, plan, outDir, branding, wordTimestamps }) {
   // `branding` is the sender's brand identity for the persistent wordmark.
   // Falls back to a neutral mark when not provided (e.g. when scripts/* CLI
   // tools call the compiler without a sender context).
@@ -92,6 +92,13 @@ export function compileComposition({ repoRoot, plan, outDir, branding }) {
     senderName: branding?.senderName?.trim() || "",
     senderCompany: branding?.senderCompany?.trim() || "",
   };
+  // `wordTimestamps` is the raw ElevenLabs Scribe output. When present, the
+  // compiler builds a bottom-right captions track timed to actual speech
+  // boundaries (3-4 words per window, fades governed by hyperframes' clip
+  // visibility model). When absent, no captions render.
+  const captionWindows = wordTimestamps?.length
+    ? chunkCaptionsFromWords(wordTimestamps, plan.duration)
+    : [];
   const ajv = new Ajv({ allErrors: true });
   addFormats(ajv);
   const validatePlan = ajv.compile(PLAN_SCHEMA);
@@ -218,6 +225,7 @@ export function compileComposition({ repoRoot, plan, outDir, branding }) {
     layoutCss,
     masterTimelineMounts,
     branding: senderBranding,
+    captionWindows,
   });
   writeFileSync(path.join(outDir, "index.html"), html);
 
@@ -386,7 +394,60 @@ function renderSceneFragment({ repoRoot, scene }) {
   return fragment;
 }
 
-function renderParent({ plan, sceneFragments, crop, tokensCss, layoutCss, masterTimelineMounts, branding }) {
+/**
+ * Chunk ElevenLabs word_timestamps into ~3-4 word caption windows.
+ *
+ * Each window is a single on-screen line; one replaces the previous at the
+ * start of the next chunk's first word, so there's no gap or flicker. We
+ * also break early at sentence-end punctuation (. ! ?) so the line doesn't
+ * straddle a beat boundary, and we collapse the space-before-punct that
+ * Scribe's word array produces ("calls ." → "calls.").
+ *
+ * Output shape: [{ text, start, duration }]. Duration is stretched to the
+ * next chunk's start so each caption stays visible until replaced.
+ */
+function chunkCaptionsFromWords(words, totalDuration) {
+  const wordsOnly = (words || []).filter(
+    (w) => w && w.type === "word" && typeof w.text === "string"
+  );
+  if (!wordsOnly.length) return [];
+
+  const chunks = [];
+  let buf = [];
+  for (const w of wordsOnly) {
+    buf.push(w);
+    const endsSentence = /[.!?]$/.test(w.text);
+    if (buf.length >= 4 || endsSentence) {
+      chunks.push(buildChunk(buf));
+      buf = [];
+    }
+  }
+  if (buf.length) chunks.push(buildChunk(buf));
+
+  for (let i = 0; i < chunks.length; i++) {
+    const next = chunks[i + 1];
+    const naturalDur = Math.max(0.3, chunks[i].end - chunks[i].start);
+    chunks[i].duration = next
+      ? Math.max(0.3, next.start - chunks[i].start)
+      : Math.max(naturalDur + 0.3, totalDuration - chunks[i].start);
+  }
+  return chunks;
+}
+
+function buildChunk(buf) {
+  const text = buf
+    .map((x) => x.text)
+    .join(" ")
+    .replace(/\s+([.,!?;:])/g, "$1")
+    .trim();
+  return {
+    text,
+    start: Number(buf[0].start) || 0,
+    end: Number(buf[buf.length - 1].end) || 0,
+  };
+}
+
+function renderParent({ plan, sceneFragments, crop, tokensCss, layoutCss, masterTimelineMounts, branding, captionWindows }) {
   const duration = plan.duration.toFixed(3);
   const compId = plan.compositionId;
   return `<!DOCTYPE html>
@@ -489,6 +550,38 @@ ${layoutCss}
       overflow: hidden;
       z-index: 10;
     }
+    /* Captions sit above the progress bar in the bottom-right quadrant.
+       Each <div.caption-window> is a hyperframes clip — visibility is
+       governed by data-start/data-duration, so they swap without overlap
+       (the next window's start equals the prior window's end). */
+    .captions {
+      position: absolute;
+      right: 80px;
+      bottom: 96px;
+      width: 720px;
+      max-width: 42%;
+      text-align: right;
+      pointer-events: none;
+      z-index: 11;
+    }
+    .caption-window {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      font-family: "Inter", system-ui, sans-serif;
+      font-size: 40px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      line-height: 1.15;
+      color: var(--text);
+      font-feature-settings: "ss02", "cv11";
+      text-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.6),
+        0 2px 12px rgba(0, 0, 0, 0.08);
+      white-space: normal;
+      word-break: break-word;
+    }
     .progress-fill {
       position: absolute;
       inset: 0 auto 0 0;
@@ -540,6 +633,10 @@ ${branding?.senderCompany ? `    <div id="wordmark" class="wordmark clip" data-s
     <div id="progress" class="progress clip" data-start="0" data-duration="${duration}" data-track-index="8">
       <div class="progress-fill"></div>
     </div>
+
+    ${(captionWindows || []).length ? `<div id="captions" class="captions">
+${captionWindows.map((w, i) => `      <div class="caption-window clip" data-start="${w.start.toFixed(3)}" data-duration="${w.duration.toFixed(3)}" data-track-index="12">${escapeHtml(w.text)}</div>`).join("\n")}
+    </div>` : ""}
 
     <!-- ===== Scenes ===== -->
 ${sceneFragments
