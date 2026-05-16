@@ -37,11 +37,21 @@ export interface MessagesUsage {
   cache_read_input_tokens?: number;
 }
 
+export interface ThinkingBlock {
+  type: "thinking";
+  thinking: string;
+  signature?: string;
+}
+
+export type ContentBlock =
+  | { type: "text"; text: string }
+  | ThinkingBlock;
+
 export interface MessagesResponse {
   id: string;
   type: "message";
   role: "assistant";
-  content: Array<{ type: "text"; text: string }>;
+  content: ContentBlock[];
   model: string;
   stop_reason: "end_turn" | "max_tokens" | "stop_sequence" | "tool_use";
   usage: MessagesUsage;
@@ -64,6 +74,11 @@ export interface CreateMessageOpts {
   system?: string | SystemBlock[];
   messages: UserMessage[];
   temperature?: number;
+  /** Enable extended thinking. Budget is in tokens (min 1024, recommended
+   *  4096-16384 for hard reasoning tasks). When set, the API may return
+   *  thinking blocks before the answer text. max_tokens MUST exceed
+   *  budget_tokens. Temperature must be 1 (or omitted). */
+  thinking?: { type: "enabled"; budget_tokens: number };
 }
 
 export async function createMessage(opts: CreateMessageOpts): Promise<MessagesResponse> {
@@ -74,6 +89,7 @@ export async function createMessage(opts: CreateMessageOpts): Promise<MessagesRe
   };
   if (opts.system !== undefined) body.system = opts.system;
   if (opts.temperature !== undefined) body.temperature = opts.temperature;
+  if (opts.thinking !== undefined) body.thinking = opts.thinking;
 
   const resp = await fetch(`${BASE_URL}/v1/messages`, {
     method: "POST",
@@ -106,10 +122,11 @@ export async function createMessage(opts: CreateMessageOpts): Promise<MessagesRe
   return json as MessagesResponse;
 }
 
-/** Pulls the concatenated text from a Messages API response. */
+/** Pulls the concatenated text from a Messages API response. Skips any
+ *  thinking blocks (returned when extended thinking is enabled). */
 export function extractText(resp: MessagesResponse): string {
   return resp.content
-    .filter((b) => b.type === "text")
+    .filter((b): b is { type: "text"; text: string } => b.type === "text")
     .map((b) => b.text)
     .join("")
     .trim();
