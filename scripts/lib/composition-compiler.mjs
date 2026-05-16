@@ -551,6 +551,33 @@ ${layoutCss}
         radial-gradient(ellipse 40% 80% at 0% 50%, rgba(255, 80, 40, 0.6), transparent 60%);
       mix-blend-mode: screen;
     }
+
+    /* Ambience layer — applied globally above scenes but under transitions
+       and captions. Grain adds film-like texture; vignette draws the eye
+       to center. Both very low opacity so they don't distract. */
+    .grain-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+      opacity: 0.10;
+      mix-blend-mode: multiply;
+      /* SVG noise generated via feTurbulence — pure CSS, no external assets.
+         baseFrequency tuned to look like ~50 ASA film grain at 1920x1080. */
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+      background-size: 240px 240px;
+    }
+    .vignette {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 21;
+      background:
+        radial-gradient(ellipse 100% 90% at 50% 50%,
+          transparent 50%,
+          rgba(31, 26, 20, 0.08) 80%,
+          rgba(31, 26, 20, 0.22) 100%);
+    }
     .wordmark {
       position: absolute;
       top: 56px;
@@ -678,6 +705,11 @@ ${branding?.senderCompany ? `    <div id="wordmark" class="wordmark clip" data-s
          opacity:0 by default so they don't interfere with regular scenes. -->
     <div id="transition-flash" class="transition-overlay transition-flash"></div>
     <div id="transition-leak"  class="transition-overlay transition-leak"></div>
+
+    <!-- Ambience layer: cinematic film grain + soft vignette. Always-on,
+         very low opacity. Sits above scenes/transitions but below captions. -->
+    <div class="grain-overlay" aria-hidden="true"></div>
+    <div class="vignette" aria-hidden="true"></div>
 
     ${(captionWindows || []).length ? `<div id="captions" class="captions">
 ${captionWindows.map((w, i) => `      <div class="caption-window clip" data-start="${w.start.toFixed(3)}" data-duration="${w.duration.toFixed(3)}" data-track-index="12">${escapeHtml(w.text)}</div>`).join("\n")}
