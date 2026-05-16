@@ -128,43 +128,34 @@
     if (!root) { window.__timelines["chart-comparison-v1"] = null; return; }
 
     const tl = gsap.timeline({ paused: true });
-    tl.fromTo(root.querySelector(".eyebrow"),
-      { opacity: 0, x: -20 },
-      { opacity: 1, x: 0, duration: 0.4, ease: "power2.out" }, 0);
-    tl.fromTo(root.querySelector(".metric-label"),
-      { opacity: 0, y: 14 },
-      { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.15);
+    LF.slideIn(tl, root.querySelector(".eyebrow"), { x: -20, delay: 0, duration: 0.4 });
+    LF.fadeUp(tl, root.querySelector(".metric-label"), { delay: 0.15, distance: 14, duration: 0.5 });
 
-    // Stagger rows in, then animate bar fills + count-up the value
-    const rows = root.querySelectorAll(".row");
-    rows.forEach((row, i) => {
+    const rows = Array.prototype.slice.call(root.querySelectorAll(".row"));
+    rows.forEach(function (row, i) {
       const at = 0.45 + i * 0.25;
-      tl.fromTo(row,
-        { opacity: 0, y: 18 },
-        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, at);
+      LF.fadeUp(tl, row, { delay: at, distance: 18, duration: 0.4 });
       const fill = row.querySelector(".bar-fill");
       if (fill) {
         const target = parseFloat(fill.style.getPropertyValue("--pct")) || 0;
-        // Animate from 0 → target via a CSS variable so the existing
-        // `width: calc(var(--pct) * 1%)` follows.
         const proxy = { v: 0 };
+        // power4.out gives a "whip toward the value" feel — faster start, slower stop
         tl.to(proxy, {
-          v: target,
-          duration: 0.9,
-          ease: "power2.out",
-          onUpdate: () => { fill.style.setProperty("--pct", proxy.v); },
+          v: target, duration: 0.95, ease: "power4.out",
+          onUpdate: function () { fill.style.setProperty("--pct", proxy.v); },
         }, at + 0.1);
       }
       const value = row.querySelector(".row-value");
-      if (value) {
-        tl.fromTo(value,
-          { opacity: 0, scale: 0.85 },
-          { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(1.4)" }, at + 0.7);
+      LF.scalePop(tl, value, { delay: at + 0.7, from: 0.85, distance: 0, duration: 0.4 });
+
+      // The highlighted (winning) bar gets a glow pulse after fill lands
+      if (row.classList.contains("highlight") && fill) {
+        LF.pulseGlow(tl, fill, { delay: at + 1.15, scale: 1.025, duration: 0.7, repeat: 1 });
       }
     });
 
-    const fn = root.querySelector(".footnote");
-    if (fn) tl.fromTo(fn, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4 }, "-=0.2");
+    LF.fadeUp(tl, root.querySelector(".footnote"),
+      { delay: 0.45 + rows.length * 0.25 + 0.3, distance: 10, duration: 0.4 });
 
     window.__timelines["chart-comparison-v1"] = tl;
   })();

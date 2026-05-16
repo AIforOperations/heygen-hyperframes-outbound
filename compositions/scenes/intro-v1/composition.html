@@ -193,12 +193,15 @@
     const root = document.querySelector("#intro-v1");
     if (!root) { window.__timelines["intro-v1"] = null; return; }
 
-    // Wrap each word in the greeting + subhead so we can stagger them
+    // Wrap greeting + subhead words for staggered fade-in
     function wrapWords(el) {
       const html = el.innerHTML;
-      // Split on spaces but preserve existing inline tags (already-wrapped spans)
       const parts = html.split(/(\s+)/);
-      el.innerHTML = parts.map(p => /^\s+$/.test(p) ? p : (p.includes("<") ? p : `<span class="word">${p}</span>`)).join("");
+      el.innerHTML = parts.map(function(p) {
+        if (/^\s+$/.test(p)) return p;
+        if (p.indexOf("<") !== -1) return p;
+        return '<span class="word">' + p + '</span>';
+      }).join("");
       return el.querySelectorAll(".word");
     }
     const greeting = root.querySelector(".greeting");
@@ -207,98 +210,48 @@
     const subheadWords = subhead ? wrapWords(subhead) : [];
 
     const logoCard = root.querySelector(".logo-card");
+    const logoBadge = root.querySelector(".logo-badge");
     const accentLine = root.querySelector(".accent-line");
     const ring = root.querySelector(".ring");
-    const ambDots = root.querySelectorAll(".ambient .dot");
+    const ambDots = Array.prototype.slice.call(root.querySelectorAll(".ambient .dot"));
 
     const tl = gsap.timeline({ paused: true });
 
-    // ===== Initial reveal =====
-    tl.fromTo(logoCard,
-      { opacity: 0, x: -32 },
-      { opacity: 1, x: 0, duration: 0.6, ease: "power3.out" }, 0);
-    tl.fromTo(greetingWords,
-      { opacity: 0, y: 18, filter: "blur(6px)" },
-      { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.45, ease: "power2.out", stagger: 0.08 }, 0.35);
-    tl.fromTo(subheadWords,
-      { opacity: 0, y: 12 },
-      { opacity: 1, y: 0, duration: 0.35, ease: "power2.out", stagger: 0.05 }, 0.9);
+    // Logo card slides in with subtle rotation; shimmer sweep follows
+    LF.slideIn(tl, logoCard, { x: -32, rotate: -1.5, delay: 0, duration: 0.6 });
+    LF.shimmer(tl, logoCard, { delay: 0.6, duration: 0.9 });
+    LF.pulseGlow(tl, logoBadge, { delay: 1.4, scale: 1.04, duration: 0.8, repeat: 1 });
 
-    // ===== Accent line draws on after the greeting =====
+    // Greeting words stagger with blur-in for "coming into focus" feel
+    greetingWords.forEach(function (w, i) {
+      LF.blurIn(tl, w, { delay: 0.35 + i * 0.08, distance: 18, blur: 6, duration: 0.45 });
+    });
+    // Subhead words stagger plain
+    subheadWords.forEach(function (w, i) {
+      LF.fadeUp(tl, w, { delay: 0.9 + i * 0.05, distance: 12, duration: 0.35 });
+    });
+
+    // Accent line grows
     if (accentLine) {
       tl.fromTo(accentLine,
         { width: 0 },
         { width: 380, duration: 0.7, ease: "power3.out" }, 1.3);
     }
 
-    // ===== Logo card shimmer sweep =====
-    if (logoCard) {
-      tl.fromTo(logoCard,
-        { "--shimmer-x": "-60%" },
-        { duration: 0.9, ease: "power2.inOut",
-          onUpdate: function () {
-            const p = this.progress();
-            logoCard.style.setProperty("--shimmer-x", (-60 + 220 * p) + "%");
-          },
-        }, 0.6);
-      // Subtle "alive" breathe on the badge for the remainder of the scene
-      const badge = root.querySelector(".logo-badge");
-      if (badge) {
-        tl.to(badge, {
-          scale: 1.04,
-          duration: 0.9,
-          ease: "sine.inOut",
-          yoyo: true,
-          repeat: 3,
-        }, 1.5);
-      }
-    }
-
-    // ===== Ambient ring expand + ambient dots stagger in =====
+    // Ring + ambient dots
     if (ring) {
       tl.fromTo(ring,
         { opacity: 0, scale: 0.4 },
         { opacity: 0.9, scale: 1, duration: 0.8, ease: "power2.out" }, 0.5);
       tl.to(ring, {
-        scale: 1.18,
-        opacity: 0.45,
-        duration: 1.4,
-        ease: "sine.inOut",
-        yoyo: true,
-        repeat: 2,
+        scale: 1.18, opacity: 0.45, duration: 1.4, ease: "sine.inOut",
+        yoyo: true, repeat: 1,
       }, 1.4);
     }
-    if (ambDots.length) {
-      ambDots.forEach((d, i) => {
-        tl.fromTo(d,
-          { opacity: 0, scale: 0.3 },
-          { opacity: 0.85, scale: 1, duration: 0.5, ease: "back.out(2)" }, 0.8 + i * 0.12);
-        // Slow drift to keep the frame alive
-        const dx = (i % 2 === 0) ? -12 : 12;
-        const dy = (i < 2) ? 18 : -18;
-        tl.to(d, {
-          x: dx, y: dy,
-          duration: 2.4,
-          ease: "sine.inOut",
-          yoyo: true,
-          repeat: 1,
-        }, 1.5 + i * 0.1);
-      });
-    }
-
-    // Shimmer sweep on the logo card via a CSS pseudo (use a custom prop)
-    // We re-run a second shimmer late so the card feels active longer.
-    if (logoCard) {
-      tl.to({}, {
-        duration: 0.05,
-        onComplete: () => logoCard.style.setProperty("--shimmer-x", "-60%"),
-      }, 2.6);
-      const sweep = { p: 0 };
-      tl.to(sweep, {
-        p: 1, duration: 1.0, ease: "power2.inOut",
-        onUpdate: () => logoCard.style.setProperty("--shimmer-x", (-60 + 220 * sweep.p) + "%"),
-      }, 2.7);
-    }
+    ambDots.forEach(function (d, i) {
+      LF.scalePop(tl, d, { delay: 0.8 + i * 0.12, from: 0.3, distance: 0, duration: 0.5 });
+    });
+    LF.ambientDrift(tl, ambDots, { delay: 1.6, distance: 14, duration: 3.0 });
 
     window.__timelines["intro-v1"] = tl;
   })();

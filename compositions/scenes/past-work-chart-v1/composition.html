@@ -173,71 +173,37 @@
     const root = document.querySelector("#past-work-chart-v1");
     if (!root) { window.__timelines["past-work-chart-v1"] = null; return; }
 
-    const valueEl = root.querySelector(".stat-value");
     const target = Number(root.getAttribute("data-result-value")) || 0;
     const decimals = Number(root.getAttribute("data-result-decimals")) || 0;
+    const valueEl = root.querySelector(".stat-value");
     const sparkLine = root.querySelector(".spark-line");
     const sparkDot = root.querySelector(".spark-dot");
-
-    // Set up the spark line for a draw-on animation: compute its length,
-    // set stroke-dasharray + dashoffset to that length, then animate
-    // dashoffset → 0 to "draw" it left-to-right.
-    let pathLength = 0;
-    if (sparkLine && typeof sparkLine.getTotalLength === "function") {
-      pathLength = sparkLine.getTotalLength();
-      sparkLine.style.strokeDasharray = String(pathLength);
-      sparkLine.style.strokeDashoffset = String(pathLength);
-    }
+    const claimWho = root.querySelector(".claim .who");
 
     const tl = gsap.timeline({ paused: true });
 
-    // Eyebrow fades in first.
-    tl.fromTo(root.querySelector(".eyebrow"),
-      { opacity: 0, x: -12 },
-      { opacity: 1, x: 0, duration: 0.35, ease: "power2.out" }, 0);
+    LF.slideIn(tl, root.querySelector(".eyebrow"), { x: -12, delay: 0, duration: 0.35 });
 
-    // Prefix + suffix fade in alongside the value's appearance, so the
-    // currency mark and unit are in place before the digits start ticking.
     const prefix = root.querySelector(".stat-prefix");
     const suffix = root.querySelector(".stat-suffix");
-    const statBits = [prefix, suffix, valueEl].filter(Boolean);
-    tl.fromTo(statBits,
-      { opacity: 0, y: 12 },
-      { opacity: 1, y: 0, duration: 0.35, ease: "power2.out", stagger: 0.05 }, 0.2);
+    [prefix, valueEl, suffix].filter(Boolean).forEach(function (el, i) {
+      LF.fadeUp(tl, el, { delay: 0.2 + i * 0.05, distance: 12, duration: 0.35 });
+    });
 
-    // Number ticks 0 → target over 1.4s with an ease-out so it slows
-    // gracefully into the final value (instead of stopping abruptly).
-    const counter = { n: 0 };
-    tl.to(counter, {
-      n: target,
-      duration: 1.4,
-      ease: "power2.out",
-      onUpdate: function () {
-        valueEl.textContent = counter.n.toFixed(decimals);
-      },
-      onComplete: function () {
-        // Snap to exact target in case rounding drifted on the last frame.
-        valueEl.textContent = target.toFixed(decimals);
-      },
-    }, 0.4);
+    // Number ticks 0 → target while sparkline draws on, in sync
+    LF.counter(tl, valueEl, { from: 0, to: target, decimals: decimals, delay: 0.4, duration: 1.4 });
+    LF.drawSvg(tl, sparkLine, { delay: 0.4, duration: 1.4 });
 
-    // Sparkline draws in synced with the ticker. The dot at the end snaps
-    // in once the line completes its draw.
-    if (pathLength && sparkLine) {
-      tl.fromTo(sparkLine,
-        { strokeDashoffset: pathLength },
-        { strokeDashoffset: 0, duration: 1.4, ease: "power2.out" }, 0.4);
-    }
     if (sparkDot) {
       tl.fromTo(sparkDot,
         { opacity: 0, scale: 0.3, transformOrigin: "1000px 10px" },
         { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, 1.6);
+      // Glow pulse on the end-dot to anchor the eye on the final value
+      LF.pulseGlow(tl, sparkDot, { delay: 2.0, scale: 1.4, duration: 0.5, repeat: 1 });
     }
 
-    // Claim caption blurs in last so the eye finishes on the words.
-    tl.fromTo(root.querySelector(".claim"),
-      { opacity: 0, y: 14, filter: "blur(6px)" },
-      { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.55, ease: "power2.out" }, 1.4);
+    LF.blurIn(tl, root.querySelector(".claim"), { delay: 1.4, distance: 14, blur: 6, duration: 0.55 });
+    LF.letterSettle(tl, claimWho, { delay: 1.9, fromSpacing: "0.2em", duration: 0.7 });
 
     window.__timelines["past-work-chart-v1"] = tl;
   })();

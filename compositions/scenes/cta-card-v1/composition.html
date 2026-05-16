@@ -147,35 +147,16 @@
     if (!root) { window.__timelines["cta-card-v1"] = null; return; }
 
     const tl = gsap.timeline({ paused: true });
+    LF.slideIn(tl, root.querySelector(".eyebrow"), { x: -16, delay: 0, duration: 0.35 });
+    LF.scalePop(tl, root.querySelector(".cta"), { delay: 0.15, from: 0.88, distance: 16, duration: 0.7 });
+    LF.blurIn(tl, root.querySelector(".subline"), { delay: 0.55, distance: 12, blur: 4, duration: 0.5 });
+    LF.scalePop(tl, root.querySelector(".reply-row"), { delay: 0.95, from: 0.96, distance: 14, duration: 0.5 });
 
-    const eyebrow = root.querySelector(".eyebrow");
-    if (eyebrow) {
-      tl.fromTo(eyebrow,
-        { opacity: 0, x: -16 },
-        { opacity: 1, x: 0, duration: 0.35, ease: "power2.out" }, 0);
-    }
-    tl.fromTo(root.querySelector(".cta"),
-      { opacity: 0, scale: 0.88, y: 16 },
-      { opacity: 1, scale: 1, y: 0, duration: 0.7, ease: "back.out(1.4)" }, 0.15);
-    const sub = root.querySelector(".subline");
-    if (sub) {
-      tl.fromTo(sub,
-        { opacity: 0, y: 12, filter: "blur(4px)" },
-        { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.5, ease: "power2.out" }, 0.55);
-    }
-    const reply = root.querySelector(".reply-row");
-    if (reply) {
-      tl.fromTo(reply,
-        { opacity: 0, y: 14, scale: 0.96 },
-        { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.6)" }, 0.95);
-      // Subtle pulse on the arrow to draw the eye toward the call-to-action.
-      const arrow = reply.querySelector(".reply-arrow");
-      if (arrow) {
-        tl.to(arrow,
-          { x: -4, duration: 0.4, ease: "sine.inOut", yoyo: true, repeat: 3 },
-          1.4);
-      }
-    }
+    // Magnetic arrow oscillation telegraphs "this is the action" — pulled left
+    // toward the reply-arrow icon as if drawn toward the reply
+    LF.magneticOscillate(tl, root.querySelector(".reply-arrow"), {
+      delay: 1.4, distance: 5, duration: 0.45, repeat: 3,
+    });
 
     window.__timelines["cta-card-v1"] = tl;
   })();

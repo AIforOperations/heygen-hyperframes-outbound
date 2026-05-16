@@ -116,12 +116,18 @@
     if (typeof gsap === "undefined") { window.__timelines["stat-callout-v1"] = null; return; }
     const root = document.querySelector("#stat-callout-v1");
     if (!root) { window.__timelines["stat-callout-v1"] = null; return; }
+
     const tl = gsap.timeline({ paused: true });
-    tl.fromTo(root.querySelector(".chip"), { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.45, ease: "power2.out" }, 0);
-    tl.fromTo(root.querySelector(".stat-value"), { opacity: 0, scale: 0.78 }, { opacity: 1, scale: 1, duration: 0.65, ease: "back.out(1.6)" }, 0.2);
-    tl.fromTo(root.querySelector(".stat-label"), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" }, 0.55);
-    const cap = root.querySelector(".stat-caption");
-    if (cap) tl.fromTo(cap, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4 }, 0.9);
+    const value = root.querySelector(".stat-value");
+
+    LF.slideIn(tl, root.querySelector(".chip"), { x: -24, delay: 0, duration: 0.45 });
+    LF.scalePop(tl, value, { delay: 0.2, from: 0.78, distance: 0, duration: 0.7 });
+    LF.fadeUp(tl, root.querySelector(".stat-label"), { delay: 0.55, distance: 14, duration: 0.45 });
+    LF.fadeUp(tl, root.querySelector(".stat-caption"), { delay: 0.9, distance: 10, duration: 0.4 });
+
+    // Subtle pulse on the stat value to draw the eye after it lands
+    LF.pulseGlow(tl, value, { delay: 1.4, scale: 1.04, duration: 0.65, repeat: 1 });
+
     window.__timelines["stat-callout-v1"] = tl;
   })();
 </script>

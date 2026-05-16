@@ -156,98 +156,67 @@
     const root = document.querySelector("#headline-pull-v1");
     if (!root) { window.__timelines["headline-pull-v1"] = null; return; }
 
-    // Chunk the headline into groups of 2–3 words for staggered reveal
+    // Chunk the headline into 2-3 word groups for reveal stagger
     const pull = root.querySelector(".pull");
     if (pull) {
       const text = (pull.textContent || "").trim();
       const words = text.split(/\s+/);
       const chunkSize = words.length > 18 ? 3 : 2;
       const chunks = [];
-      for (let i = 0; i < words.length; i += chunkSize) chunks.push(words.slice(i, i + chunkSize).join(" "));
-      pull.innerHTML = chunks.map(c => `<span class="chunk">${c}</span>`).join(" ");
+      for (let i = 0; i < words.length; i += chunkSize) {
+        chunks.push(words.slice(i, i + chunkSize).join(" "));
+      }
+      pull.innerHTML = chunks.map(function (c) {
+        return '<span class="chunk">' + c + '</span>';
+      }).join(" ");
     }
 
     const tl = gsap.timeline({ paused: true });
     const accentBar = root.querySelector(".accent-bar");
-    const motes = root.querySelectorAll(".ambient .mote");
+    const motes = Array.prototype.slice.call(root.querySelectorAll(".ambient .mote"));
+    const eyebrow = root.querySelector(".eyebrow");
+    const chunks = Array.prototype.slice.call(root.querySelectorAll(".pull .chunk"));
+    const footnote = root.querySelector(".footnote");
 
-    // Accent bar grows beside the eyebrow
+    // Accent bar grows beside eyebrow
     if (accentBar) {
       tl.fromTo(accentBar,
         { height: 0, opacity: 0 },
         { height: 180, opacity: 1, duration: 0.7, ease: "power3.out" }, 0);
     }
+    LF.slideIn(tl, eyebrow, { x: -24, delay: 0.1, duration: 0.45 });
 
-    tl.fromTo(root.querySelector(".eyebrow"),
-      { opacity: 0, x: -24 },
-      { opacity: 1, x: 0, duration: 0.45, ease: "power2.out" }, 0.1);
+    // Chunks reveal with blur-in
+    chunks.forEach(function (ch, i) {
+      LF.blurIn(tl, ch, { delay: 0.35 + i * 0.18, distance: 22, blur: 8, duration: 0.55 });
+    });
 
-    const chunks = root.querySelectorAll(".pull .chunk");
-    if (chunks.length) {
-      tl.fromTo(chunks,
-        { opacity: 0, y: 22, filter: "blur(8px)" },
-        { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.55, ease: "power3.out", stagger: 0.18 }, 0.35);
-    }
-
-    // Highlight the LAST chunk with a draw-on underline (the punchline)
+    // Highlight the last chunk with a draw-on underline + subtle glow
     if (chunks.length) {
       const last = chunks[chunks.length - 1];
       last.classList.add("chunk-highlight");
       const startHL = 0.35 + (chunks.length - 1) * 0.18 + 0.4;
-      tl.to(last, {
-        duration: 0.6,
-        ease: "power2.out",
-        onStart: () => {
-          // Use a CSS variable trick: write scaleX of the ::after via inline style
-          last.style.setProperty("--hl-scale", "0");
-        },
-      }, startHL);
-      // Animate a proxy and apply to the ::after via custom property
       const hl = { v: 0 };
       tl.to(hl, {
-        v: 1,
-        duration: 0.55,
-        ease: "power2.out",
-        onUpdate: () => {
-          last.style.setProperty("--hl-scale", hl.v);
-        },
+        v: 1, duration: 0.55, ease: "power2.out",
+        onUpdate: function () { last.style.setProperty("--hl-scale", hl.v); },
       }, startHL);
+      LF.pulseGlow(tl, last, { delay: startHL + 0.6, scale: 1.025, duration: 0.55 });
     }
 
-    const footnote = root.querySelector(".footnote");
-    if (footnote) {
-      tl.fromTo(footnote,
-        { opacity: 0, y: 10 },
-        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, "-=0.2");
-    }
+    LF.fadeUp(tl, footnote, { delay: 1.5, distance: 10, duration: 0.4 });
 
-    // Ambient motes — stagger in, then continuous drift to keep the frame alive
-    if (motes.length) {
-      motes.forEach((m, i) => {
-        tl.fromTo(m,
-          { opacity: 0, scale: 0.4 },
-          { opacity: 0.8, scale: 1, duration: 0.5, ease: "back.out(2)" }, 0.5 + i * 0.12);
-        const dx = (i % 2 === 0) ? -16 : 16;
-        const dy = (i < 3) ? 22 : -22;
-        tl.to(m, {
-          x: dx, y: dy,
-          duration: 2.8,
-          ease: "sine.inOut",
-          yoyo: true,
-          repeat: 2,
-        }, 1.0 + i * 0.08);
-      });
-    }
+    // Motes scale-pop in then drift continuously
+    motes.forEach(function (m, i) {
+      LF.scalePop(tl, m, { delay: 0.5 + i * 0.12, from: 0.4, distance: 0, duration: 0.5 });
+    });
+    LF.ambientDrift(tl, motes, { delay: 1.0, distance: 18, duration: 3.0 });
 
-    // Subtle accent-bar shimmer at the end
+    // Late accent-bar shimmer
     if (accentBar) {
       tl.to(accentBar, {
-        scaleY: 1.15,
-        duration: 1.6,
-        ease: "sine.inOut",
-        yoyo: true,
-        repeat: 2,
-        transformOrigin: "top center",
+        scaleY: 1.15, duration: 1.6, ease: "sine.inOut",
+        yoyo: true, repeat: 1, transformOrigin: "top center",
       }, 1.4);
     }
 
