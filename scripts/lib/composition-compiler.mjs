@@ -230,6 +230,17 @@ export function compileComposition({ repoRoot, plan, outDir, branding, wordTimes
     duration: s.duration,
     transitionInto: s.transitionInto || "fade",
   }));
+  // For the voice-waveform driver: pass through the filtered word array
+  // (just type==="word" entries with start/end), capped to keep the
+  // master-timeline emit size reasonable.
+  const wordTimestampsForWave = (wordTimestamps || [])
+    .filter(function (w) {
+      return w && w.type === "word" && typeof w.start === "number" && typeof w.end === "number";
+    })
+    .map(function (w) {
+      return { start: Number(w.start.toFixed(3)), end: Number(w.end.toFixed(3)) };
+    });
+
   const html = renderParent({
     plan,
     sceneFragments,
@@ -240,6 +251,7 @@ export function compileComposition({ repoRoot, plan, outDir, branding, wordTimes
     masterTimelineMounts,
     branding: senderBranding,
     captionWindows,
+    wordTimestampsForWave,
   });
   writeFileSync(path.join(outDir, "index.html"), html);
 
@@ -461,7 +473,7 @@ function buildChunk(buf) {
   };
 }
 
-function renderParent({ plan, sceneFragments, crop, tokensCss, layoutCss, motionJs, masterTimelineMounts, branding, captionWindows }) {
+function renderParent({ plan, sceneFragments, crop, tokensCss, layoutCss, motionJs, masterTimelineMounts, branding, captionWindows, wordTimestampsForWave }) {
   const duration = plan.duration.toFixed(3);
   const compId = plan.compositionId;
   return `<!DOCTYPE html>
@@ -517,6 +529,33 @@ ${layoutCss}
       object-position: 50% var(--avatar-pos-y, 30%);
       transform: scale(var(--avatar-scale, 1.0));
       transform-origin: 50% var(--avatar-origin-y, 30%);
+    }
+    /* Voice waveform indicator — 7 short vertical bars beneath the avatar.
+       Each bar's scaleY pulses on word boundaries (driven by master
+       timeline from ElevenLabs word_timestamps). Visually mimics a
+       "the avatar is speaking right now" recording indicator. */
+    .voice-indicator {
+      position: absolute;
+      left: var(--avatar-x);
+      top: calc(var(--avatar-y) + var(--avatar-size) + 18px);
+      width: var(--avatar-size);
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      z-index: 6;
+      pointer-events: none;
+    }
+    .voice-bar {
+      width: 6px;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--brand-red) 0%, var(--brand-red-light) 100%);
+      transform: scaleY(0.25);
+      transform-origin: center center;
+      opacity: 0.55;
+      box-shadow: 0 0 8px rgba(220, 38, 38, 0.35);
     }
     .scene-mount {
       position: absolute;
@@ -695,6 +734,20 @@ ${layoutCss}
            data-track-index="6"
            data-volume="1"></audio>
 
+    <!-- Voice waveform indicator: 7 bars beneath the avatar circle.
+         Animated by the master timeline using ElevenLabs word_timestamps
+         to pulse on each spoken word. Bars stay at scaleY 0.25 between
+         words. -->
+    <div class="voice-indicator" aria-hidden="true">
+      <span class="voice-bar"></span>
+      <span class="voice-bar"></span>
+      <span class="voice-bar"></span>
+      <span class="voice-bar"></span>
+      <span class="voice-bar"></span>
+      <span class="voice-bar"></span>
+      <span class="voice-bar"></span>
+    </div>
+
     <!-- ===== Wordmark + Progress (chrome) ===== -->
 ${branding?.senderCompany ? `    <div id="wordmark" class="wordmark clip" data-start="0" data-duration="${duration}" data-track-index="9">
       <span class="dot"></span><span class="brand-name">${escapeHtml(branding.senderCompany)}</span>
@@ -869,6 +922,30 @@ ${indent(frag, 6)}
           if (pad > 0.01) child.to({}, { duration: pad });
           master.add(child, m.start);
         }
+      }
+
+      // ----- Voice waveform indicator -----
+      // Pulse the 7 bars beneath the avatar on every word boundary. Driven
+      // by the word_timestamps array embedded below. Bars cycle through
+      // pseudo-random heights so the waveform doesn't look mechanical.
+      const voiceBars = document.querySelectorAll(".voice-indicator .voice-bar");
+      const wordWindows = ${JSON.stringify(wordTimestampsForWave || [])};
+      if (voiceBars.length && wordWindows.length) {
+        const heights = [0.85, 0.55, 1.0, 0.45, 0.75, 0.6, 0.9, 0.5, 0.95, 0.65];
+        wordWindows.forEach(function (w, wi) {
+          const peakAt = w.start;
+          const peakDur = Math.max(0.06, Math.min(0.18, w.end - w.start));
+          voiceBars.forEach(function (bar, bi) {
+            // Each bar gets a slightly different peak height + phase offset
+            const h = heights[(wi + bi) % heights.length];
+            master.to(bar,
+              { scaleY: h, duration: peakDur * 0.55, ease: "power2.out" },
+              peakAt + bi * 0.012);
+            master.to(bar,
+              { scaleY: 0.25, duration: peakDur * 0.55, ease: "power2.in" },
+              peakAt + peakDur * 0.55 + bi * 0.012);
+          });
+        });
       }
 
       window.__timelines[${JSON.stringify(compId)}] = master;
