@@ -24,21 +24,29 @@
   --canvas-w: 1920px;
   --canvas-h: 1080px;
 
-  /* Avatar zone (locked — DO NOT override in scenes) */
+  /* Avatar zone — moved UP so it doesn't overlap the bottom caption zone.
+     Ends at y=694 (80 + 614). DO NOT override in scenes. */
   --avatar-x: 64px;
-  --avatar-y: 233px;
+  --avatar-y: 80px;
   --avatar-size: 614px;
 
-  /* Graphics zone */
+  /* Graphics zone — aligned to the same bottom (y=694) as the avatar so
+     scenes and avatar visually share a horizon line. Shrunk vertically
+     so the bottom 360px of the canvas can host the centered caption track. */
   --gz-x: 760px;
-  --gz-y: 64px;
+  --gz-y: 80px;
   --gz-w: 1096px;
-  --gz-h: 952px;
+  --gz-h: 614px;
 
   /* Safe area inside graphics zone */
   --gz-pad: 64px;
   --safe-w: 968px;   /* gz-w - 2*pad */
-  --safe-h: 824px;   /* gz-h - 2*pad */
+  --safe-h: 486px;   /* gz-h - 2*pad */
+
+  /* Caption zone — full canvas width, y=720..1020. Nothing else renders
+     in this band. Used by the compiler when emitting the captions track. */
+  --cap-top: 720px;
+  --cap-h: 300px;
 
   /* 8-col grid math (inside safe area, 24px col gap) */
   --col-gap: 24px;

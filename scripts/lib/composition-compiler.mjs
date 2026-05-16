@@ -539,48 +539,48 @@ ${layoutCss}
       margin-right: 12px;
       box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.18);
     }
-    .progress {
-      position: absolute;
-      left: 80px;
-      right: 80px;
-      bottom: 64px;
-      height: 4px;
-      border-radius: 999px;
-      background: rgba(31, 26, 20, 0.10);
-      overflow: hidden;
-      z-index: 10;
-    }
-    /* Captions sit above the progress bar in the bottom-right quadrant.
+    /* Captions own the bottom 300px of the canvas, full-width centered.
        Each <div.caption-window> is a hyperframes clip — visibility is
        governed by data-start/data-duration, so they swap without overlap
-       (the next window's start equals the prior window's end). */
+       (the next window's start equals the prior window's end). The bottom
+       300px (y=720..1020) is RESERVED for this track. No scene mount or
+       chrome ever renders below y=720. See _shared/layout.css --cap-top. */
     .captions {
       position: absolute;
-      right: 80px;
-      bottom: 96px;
-      width: 720px;
-      max-width: 42%;
-      text-align: right;
+      left: 50%;
+      top: var(--cap-top, 720px);
+      transform: translateX(-50%);
+      width: 1440px;
+      max-width: 75%;
+      height: var(--cap-h, 300px);
+      text-align: center;
       pointer-events: none;
       z-index: 11;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .caption-window {
       position: absolute;
+      left: 0;
       right: 0;
-      bottom: 0;
+      top: 50%;
+      transform: translateY(-50%);
       width: 100%;
+      text-align: center;
       font-family: "Inter", system-ui, sans-serif;
-      font-size: 40px;
+      font-size: 56px;
       font-weight: 600;
-      letter-spacing: -0.01em;
-      line-height: 1.15;
+      letter-spacing: -0.015em;
+      line-height: 1.18;
       color: var(--text);
       font-feature-settings: "ss02", "cv11";
       text-shadow:
-        0 1px 0 rgba(255, 255, 255, 0.6),
-        0 2px 12px rgba(0, 0, 0, 0.08);
+        0 1px 0 rgba(255, 255, 255, 0.55),
+        0 2px 14px rgba(0, 0, 0, 0.08);
       white-space: normal;
-      word-break: break-word;
+      word-break: normal;
+      padding: 0 80px;
     }
     .progress-fill {
       position: absolute;
@@ -630,9 +630,6 @@ ${layoutCss}
 ${branding?.senderCompany ? `    <div id="wordmark" class="wordmark clip" data-start="0" data-duration="${duration}" data-track-index="9">
       <span class="dot"></span><span class="brand-name">${escapeHtml(branding.senderCompany)}</span>
     </div>` : ""}
-    <div id="progress" class="progress clip" data-start="0" data-duration="${duration}" data-track-index="8">
-      <div class="progress-fill"></div>
-    </div>
 
     ${(captionWindows || []).length ? `<div id="captions" class="captions">
 ${captionWindows.map((w, i) => `      <div class="caption-window clip" data-start="${w.start.toFixed(3)}" data-duration="${w.duration.toFixed(3)}" data-track-index="12">${escapeHtml(w.text)}</div>`).join("\n")}
