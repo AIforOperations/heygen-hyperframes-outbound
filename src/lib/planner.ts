@@ -137,6 +137,7 @@ SCENE SELECTION GUIDANCE
 - intro-v1: ALWAYS start with this. Greeting + company card.
 - headline-pull-v1: Best for an observational hook — a quote from the prospect's posts, a website hero line, a friction statement.
 - stat-callout-v1: ONLY if there is a real number from the prospect's data (years in business, headcount, turnaround time). Don't fabricate.
+- past-work-chart-v1: Use ONCE per video as a credibility beat (~middle of the script, right before or after the offer). Show a plausible prior result for a similar business in their vertical. Pick concrete units ($K recovered, % more booked, hours saved per week, leads per month). Generate plausible-but-not-absurd values that match the script's claim. Use claim_who to anchor the number to a comparable business type ("Austin HVAC contractor", "12-stylist salon", "regional dental group") — never name a real company unless we actually worked with them. Skip if the script doesn't mention or imply prior outcomes.
 - chart-comparison-v1: ONLY if you can ground both rows (e.g. "manual N hours" vs "with us, N min"). If you can't ground both, skip.
 - form-autofill-v1: Use when the offer involves filling out forms / documents (DRE PDFs, contracts, intake forms).
 - cta-card-v1: ALWAYS end with this. Make it a REPLY CTA — the cta_headline is a short hero ask (3-6 words: "Reply with yes.", "Want in?", "Sound good?"), and cta_subline is the specific follow-up with timing + no-risk language (e.g. "I'll have it live by Thursday. No contract."). NEVER include a fake email or URL — the prospect replies to the message the video is embedded in. NEVER use the cta_headline "Just say yes." literally — vary it per script.
@@ -146,6 +147,7 @@ DURATION CARVING
 - intro-v1: typically 4-6s
 - headline-pull-v1: typically 6-12s
 - stat-callout-v1: typically 4-7s
+- past-work-chart-v1: typically 5-8s (needs time for the number to tick up + claim to land)
 - chart-comparison-v1: typically 6-10s
 - form-autofill-v1: typically 6-10s
 - cta-card-v1: typically 4-8s
@@ -309,6 +311,7 @@ function scrubDeadLogoUrls(plan: ScenePlan): void {
 const SCENE_DURATION_RANGES: Record<string, [number, number]> = {
   "intro-v1": [3, 8],
   "stat-callout-v1": [4, 11],
+  "past-work-chart-v1": [4, 9],
   "headline-pull-v1": [4, 15],
   "chart-comparison-v1": [5, 12],
   "form-autofill-v1": [6, 12],

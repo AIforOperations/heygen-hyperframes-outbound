@@ -1,9 +1,31 @@
 {
   "$schemaVersion": 1,
-  "categories": ["intro", "stat-callout", "comparison", "profile-card", "headline-pull", "cta-card", "transition"],
-  "motionStyles": ["fade", "slide-right", "scale-pop", "type-on", "mask-wipe"],
-  "accents": ["red", "light-red", "mono"],
-  "densities": ["sparse", "medium", "busy"],
+  "categories": [
+    "intro",
+    "stat-callout",
+    "comparison",
+    "profile-card",
+    "headline-pull",
+    "cta-card",
+    "transition"
+  ],
+  "motionStyles": [
+    "fade",
+    "slide-right",
+    "scale-pop",
+    "type-on",
+    "mask-wipe"
+  ],
+  "accents": [
+    "red",
+    "light-red",
+    "mono"
+  ],
+  "densities": [
+    "sparse",
+    "medium",
+    "busy"
+  ],
   "imageVarConvention": [
     "Every <image_url> variable in a scene gets companion <image>_fallback_text and <image>_fallback_color fields.",
     "The compiler fills these automatically when the URL is missing or empty.",
@@ -17,14 +39,17 @@
       "motion": "fade",
       "density": "sparse",
       "accent": "red",
-      "durationRange": [3, 8],
+      "durationRange": [
+        3,
+        8
+      ],
       "defaultDuration": 5,
       "schema": "scenes/intro-v1/schema.json",
       "fixture": "scenes/intro-v1/fixture.json",
       "imagery": {
         "company_logo_url": "company_logo_square_84x84"
       },
-      "description": "Opening hello — prospect's company logo card on top, greeting below. Use as the first scene."
+      "description": "Opening hello \u2014 prospect's company logo card on top, greeting below. Use as the first scene."
     },
     {
       "id": "stat-callout-v1",
@@ -33,7 +58,10 @@
       "motion": "scale-pop",
       "density": "sparse",
       "accent": "red",
-      "durationRange": [4, 11],
+      "durationRange": [
+        4,
+        11
+      ],
       "defaultDuration": 5,
       "schema": "scenes/stat-callout-v1/schema.json",
       "fixture": "scenes/stat-callout-v1/fixture.json",
@@ -43,13 +71,33 @@
       "description": "Single big number + label + caption. Use to drop a researched stat about the prospect's company."
     },
     {
+      "id": "past-work-chart-v1",
+      "category": "stat-callout",
+      "variant": "animated-tick-up",
+      "motion": "tick-up",
+      "density": "medium",
+      "accent": "red",
+      "durationRange": [
+        4,
+        9
+      ],
+      "defaultDuration": 6,
+      "schema": "scenes/past-work-chart-v1/schema.json",
+      "fixture": "scenes/past-work-chart-v1/fixture.json",
+      "imagery": {},
+      "description": "Credibility beat: hero number ticks 0\u2192target with a draw-on sparkline beneath and a single-sentence claim. Use ONCE per video, in the middle, to back up the offer with a prior result. Pick concrete units ($K, %, leads, hours saved). Values must be plausible \u2014 don't invent absurd numbers."
+    },
+    {
       "id": "headline-pull-v1",
       "category": "headline-pull",
       "variant": "editorial-quote",
       "motion": "fade-up",
       "density": "sparse",
       "accent": "red",
-      "durationRange": [4, 15],
+      "durationRange": [
+        4,
+        15
+      ],
       "defaultDuration": 6,
       "schema": "scenes/headline-pull-v1/schema.json",
       "fixture": "scenes/headline-pull-v1/fixture.json",
@@ -63,12 +111,15 @@
       "motion": "fade",
       "density": "medium",
       "accent": "red",
-      "durationRange": [5, 12],
+      "durationRange": [
+        5,
+        12
+      ],
       "defaultDuration": 7,
       "schema": "scenes/chart-comparison-v1/schema.json",
       "fixture": "scenes/chart-comparison-v1/fixture.json",
       "imagery": {},
-      "description": "Horizontal bar comparison chart with 2–4 rows. Use to show before/after, manual vs automated, you vs benchmark. Mark the winning row highlight:true."
+      "description": "Horizontal bar comparison chart with 2\u20134 rows. Use to show before/after, manual vs automated, you vs benchmark. Mark the winning row highlight:true."
     },
     {
       "id": "form-autofill-v1",
@@ -77,12 +128,15 @@
       "motion": "stagger-stamp",
       "density": "busy",
       "accent": "red",
-      "durationRange": [6, 12],
+      "durationRange": [
+        6,
+        12
+      ],
       "defaultDuration": 8,
       "schema": "scenes/form-autofill-v1/schema.json",
       "fixture": "scenes/form-autofill-v1/fixture.json",
       "imagery": {},
-      "description": "Live form being auto-filled field-by-field with a progress bar at the top and a green checkmark stamping in after each value. Closes with a completion pill (e.g., 'All forms filled · 0:47'). Use when you want to VISUALLY demonstrate an automated data-entry / processing / autofill product. Highly explanatory — viewer sees the product working."
+      "description": "Live form being auto-filled field-by-field with a progress bar at the top and a green checkmark stamping in after each value. Closes with a completion pill (e.g., 'All forms filled \u00b7 0:47'). Use when you want to VISUALLY demonstrate an automated data-entry / processing / autofill product. Highly explanatory \u2014 viewer sees the product working."
     },
     {
       "id": "cta-card-v1",
@@ -91,7 +145,10 @@
       "motion": "scale-pop",
       "density": "sparse",
       "accent": "red",
-      "durationRange": [3, 10],
+      "durationRange": [
+        3,
+        10
+      ],
       "defaultDuration": 5,
       "schema": "scenes/cta-card-v1/schema.json",
       "fixture": "scenes/cta-card-v1/fixture.json",

@@ -1,0 +1,244 @@
+<!--
+  Scene: past-work-chart-v1
+  Category: stat-callout · Variant: animated-tick-up
+
+  Layout:
+    - Eyebrow ("PROOF" / "PRIOR RESULT")
+    - Hero animated number that ticks 0 → target value over ~1.5s
+    - Optional prefix/suffix (e.g. "$" / "%" / "x" / "leads")
+    - Single-sentence claim caption beneath
+    - Subtle gridline/sparkline backdrop for "data" texture
+
+  Purpose: drop a credibility beat into the middle of the sales
+  video by referencing a prior result. Numbers are GROUNDED in the
+  planner's call — we don't fabricate stats on the scene side. The
+  ticker animation makes a single number feel like "data."
+-->
+<style>
+  #past-work-chart-v1 {
+    background:
+      /* faint diagonal gridlines, far-back layer */
+      repeating-linear-gradient(45deg,
+        rgba(31, 26, 20, 0.02) 0,
+        rgba(31, 26, 20, 0.02) 1px,
+        transparent 1px,
+        transparent 22px
+      ),
+      radial-gradient(ellipse 50% 70% at 90% 80%, rgba(220, 38, 38, 0.10), transparent 60%),
+      linear-gradient(135deg, var(--bg-2) 0%, var(--bg) 100%);
+  }
+  #past-work-chart-v1 .gz-safe {
+    align-content: center;
+    grid-template-rows: auto auto auto auto;
+    row-gap: 18px;
+  }
+  #past-work-chart-v1 .eyebrow {
+    grid-column: span 8;
+    font-size: 22px;
+    font-weight: var(--weight-medium);
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-feature-settings: "ss02", "cv11";
+  }
+  #past-work-chart-v1 .eyebrow::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 5px rgba(220, 38, 38, 0.18);
+  }
+
+  /* Hero number block — prefix + ticking value + suffix on one baseline. */
+  #past-work-chart-v1 .stat-row {
+    grid-column: span 8;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    color: var(--accent);
+    font-feature-settings: "ss02", "cv11";
+    line-height: 0.9;
+  }
+  #past-work-chart-v1 .stat-prefix,
+  #past-work-chart-v1 .stat-suffix {
+    font-size: 110px;
+    font-weight: var(--weight-bold);
+    letter-spacing: -0.03em;
+    opacity: 0.85;
+  }
+  #past-work-chart-v1 .stat-value {
+    font-size: 220px;
+    font-weight: var(--weight-black);
+    letter-spacing: -0.05em;
+    font-variant-numeric: tabular-nums;
+    /* tabular-nums prevents the number from "jittering" sideways as
+       each digit ticks up — every digit slot gets equal width.   */
+  }
+
+  /* Sparkline beneath the number — purely decorative; suggests "data."
+     Drawn with SVG inline so it scales cleanly and the line can be
+     stroke-dashoffset'd for a "draw-on" animation. */
+  #past-work-chart-v1 .spark {
+    grid-column: span 8;
+    margin-top: 8px;
+    width: 100%;
+    height: 80px;
+  }
+  #past-work-chart-v1 .spark-line {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  #past-work-chart-v1 .spark-fill {
+    fill: var(--accent);
+    opacity: 0.10;
+  }
+  #past-work-chart-v1 .spark-dot {
+    fill: var(--accent);
+    stroke: white;
+    stroke-width: 3;
+  }
+  #past-work-chart-v1 .spark-grid {
+    stroke: rgba(31, 26, 20, 0.08);
+    stroke-width: 1;
+    stroke-dasharray: 3 4;
+  }
+
+  #past-work-chart-v1 .claim {
+    grid-column: span 8;
+    font-size: 32px;
+    font-weight: var(--weight-medium);
+    color: var(--text);
+    line-height: 1.3;
+    max-width: 860px;
+    font-feature-settings: "ss02", "cv11";
+    margin-top: 6px;
+  }
+  #past-work-chart-v1 .claim .who {
+    color: var(--text-2);
+    font-weight: var(--weight-regular);
+    font-size: 24px;
+    display: block;
+    margin-top: 8px;
+  }
+</style>
+
+<div id="past-work-chart-v1" class="graphics-zone clip"
+     data-composition-id="past-work-chart-v1"
+     data-start="{{__scene_start__}}"
+     data-duration="{{__scene_duration__}}"
+     data-width="1096"
+     data-height="952"
+     style="--accent: {{accent_color}};"
+     data-result-value="{{result_value}}"
+     data-result-decimals="{{result_decimals}}">
+
+  <div class="gz-safe">
+    <div class="eyebrow" data-iv-el="eyebrow">{{eyebrow}}</div>
+
+    <div class="stat-row" data-iv-el="stat-row">
+      {{#result_prefix}}<span class="stat-prefix">{{result_prefix}}</span>{{/result_prefix}}
+      <span class="stat-value" data-iv-el="value">0</span>
+      {{#result_suffix}}<span class="stat-suffix">{{result_suffix}}</span>{{/result_suffix}}
+    </div>
+
+    <svg class="spark" viewBox="0 0 1000 80" preserveAspectRatio="none" aria-hidden="true">
+      <!-- 4 horizontal gridlines -->
+      <line class="spark-grid" x1="0" y1="20" x2="1000" y2="20"></line>
+      <line class="spark-grid" x1="0" y1="40" x2="1000" y2="40"></line>
+      <line class="spark-grid" x1="0" y1="60" x2="1000" y2="60"></line>
+      <!-- ascending sparkline with fill under it -->
+      <path class="spark-fill" d="M0,75 L120,68 L240,62 L360,52 L480,46 L600,34 L720,28 L840,18 L1000,10 L1000,80 L0,80 Z"></path>
+      <path class="spark-line" data-iv-el="spark-line" d="M0,75 L120,68 L240,62 L360,52 L480,46 L600,34 L720,28 L840,18 L1000,10"></path>
+      <circle class="spark-dot" data-iv-el="spark-dot" cx="1000" cy="10" r="8"></circle>
+    </svg>
+
+    <p class="claim" data-iv-el="claim">
+      {{claim_headline}}
+      {{#claim_who}}<span class="who">{{claim_who}}</span>{{/claim_who}}
+    </p>
+  </div>
+</div>
+
+<script data-scene="past-work-chart-v1">
+  (function () {
+    window.__timelines = window.__timelines || {};
+    if (typeof gsap === "undefined") { window.__timelines["past-work-chart-v1"] = null; return; }
+    const root = document.querySelector("#past-work-chart-v1");
+    if (!root) { window.__timelines["past-work-chart-v1"] = null; return; }
+
+    const valueEl = root.querySelector(".stat-value");
+    const target = Number(root.getAttribute("data-result-value")) || 0;
+    const decimals = Number(root.getAttribute("data-result-decimals")) || 0;
+    const sparkLine = root.querySelector(".spark-line");
+    const sparkDot = root.querySelector(".spark-dot");
+
+    // Set up the spark line for a draw-on animation: compute its length,
+    // set stroke-dasharray + dashoffset to that length, then animate
+    // dashoffset → 0 to "draw" it left-to-right.
+    let pathLength = 0;
+    if (sparkLine && typeof sparkLine.getTotalLength === "function") {
+      pathLength = sparkLine.getTotalLength();
+      sparkLine.style.strokeDasharray = String(pathLength);
+      sparkLine.style.strokeDashoffset = String(pathLength);
+    }
+
+    const tl = gsap.timeline({ paused: true });
+
+    // Eyebrow fades in first.
+    tl.fromTo(root.querySelector(".eyebrow"),
+      { opacity: 0, x: -12 },
+      { opacity: 1, x: 0, duration: 0.35, ease: "power2.out" }, 0);
+
+    // Prefix + suffix fade in alongside the value's appearance, so the
+    // currency mark and unit are in place before the digits start ticking.
+    const prefix = root.querySelector(".stat-prefix");
+    const suffix = root.querySelector(".stat-suffix");
+    const statBits = [prefix, suffix, valueEl].filter(Boolean);
+    tl.fromTo(statBits,
+      { opacity: 0, y: 12 },
+      { opacity: 1, y: 0, duration: 0.35, ease: "power2.out", stagger: 0.05 }, 0.2);
+
+    // Number ticks 0 → target over 1.4s with an ease-out so it slows
+    // gracefully into the final value (instead of stopping abruptly).
+    const counter = { n: 0 };
+    tl.to(counter, {
+      n: target,
+      duration: 1.4,
+      ease: "power2.out",
+      onUpdate: function () {
+        valueEl.textContent = counter.n.toFixed(decimals);
+      },
+      onComplete: function () {
+        // Snap to exact target in case rounding drifted on the last frame.
+        valueEl.textContent = target.toFixed(decimals);
+      },
+    }, 0.4);
+
+    // Sparkline draws in synced with the ticker. The dot at the end snaps
+    // in once the line completes its draw.
+    if (pathLength && sparkLine) {
+      tl.fromTo(sparkLine,
+        { strokeDashoffset: pathLength },
+        { strokeDashoffset: 0, duration: 1.4, ease: "power2.out" }, 0.4);
+    }
+    if (sparkDot) {
+      tl.fromTo(sparkDot,
+        { opacity: 0, scale: 0.3, transformOrigin: "1000px 10px" },
+        { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, 1.6);
+    }
+
+    // Claim caption blurs in last so the eye finishes on the words.
+    tl.fromTo(root.querySelector(".claim"),
+      { opacity: 0, y: 14, filter: "blur(6px)" },
+      { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.55, ease: "power2.out" }, 1.4);
+
+    window.__timelines["past-work-chart-v1"] = tl;
+  })();
+</script>
