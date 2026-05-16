@@ -133,6 +133,10 @@
   #intro-v1 .subhead .sender {
     color: var(--text);
     font-weight: 600;
+    /* Inter ss02 serifs the capital I so "AI" in a brand name doesn't
+       collapse visually into "Al". cv11 disambiguates lowercase l.   */
+    font-feature-settings: "ss02", "cv11";
+    letter-spacing: 0;
   }
 </style>
 

@@ -84,7 +84,14 @@ const PLAN_SCHEMA = {
 };
 
 // ---------- Public API ----------
-export function compileComposition({ repoRoot, plan, outDir }) {
+export function compileComposition({ repoRoot, plan, outDir, branding }) {
+  // `branding` is the sender's brand identity for the persistent wordmark.
+  // Falls back to a neutral mark when not provided (e.g. when scripts/* CLI
+  // tools call the compiler without a sender context).
+  const senderBranding = {
+    senderName: branding?.senderName?.trim() || "",
+    senderCompany: branding?.senderCompany?.trim() || "",
+  };
   const ajv = new Ajv({ allErrors: true });
   addFormats(ajv);
   const validatePlan = ajv.compile(PLAN_SCHEMA);
@@ -210,6 +217,7 @@ export function compileComposition({ repoRoot, plan, outDir }) {
     tokensCss,
     layoutCss,
     masterTimelineMounts,
+    branding: senderBranding,
   });
   writeFileSync(path.join(outDir, "index.html"), html);
 
@@ -378,7 +386,7 @@ function renderSceneFragment({ repoRoot, scene }) {
   return fragment;
 }
 
-function renderParent({ plan, sceneFragments, crop, tokensCss, layoutCss, masterTimelineMounts }) {
+function renderParent({ plan, sceneFragments, crop, tokensCss, layoutCss, masterTimelineMounts, branding }) {
   const duration = plan.duration.toFixed(3);
   const compId = plan.compositionId;
   return `<!DOCTYPE html>
@@ -446,14 +454,22 @@ ${layoutCss}
       right: 80px;
       font-size: 32px;
       font-weight: var(--weight-bold);
-      letter-spacing: -0.02em;
+      letter-spacing: 0;
       display: flex;
       gap: 0;
       align-items: center;
       z-index: 10;
+      color: var(--text);
+      /* Inter ss02 serifs the capital I so adjacent A·I doesn't read as A·l.
+         cv11 picks the disambiguating lowercase l with a tail.            */
+      font-feature-settings: "ss02", "cv11";
     }
-    .wordmark .lead { color: var(--text); }
-    .wordmark .flow { color: var(--brand-red); }
+    .wordmark .brand-name {
+      /* Color the trailing characters in brand-red when there's a natural
+         split, otherwise the whole mark renders in --text. Split is purely
+         visual; planner doesn't have to know about it.                    */
+      color: var(--text);
+    }
     .wordmark .dot {
       width: 10px;
       height: 10px;
@@ -518,9 +534,9 @@ ${layoutCss}
            data-volume="1"></audio>
 
     <!-- ===== Wordmark + Progress (chrome) ===== -->
-    <div id="wordmark" class="wordmark clip" data-start="0" data-duration="${duration}" data-track-index="9">
-      <span class="dot"></span><span class="lead">Lead</span><span class="flow">Flow</span>
-    </div>
+${branding?.senderCompany ? `    <div id="wordmark" class="wordmark clip" data-start="0" data-duration="${duration}" data-track-index="9">
+      <span class="dot"></span><span class="brand-name">${escapeHtml(branding.senderCompany)}</span>
+    </div>` : ""}
     <div id="progress" class="progress clip" data-start="0" data-duration="${duration}" data-track-index="8">
       <div class="progress-fill"></div>
     </div>

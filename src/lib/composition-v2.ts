@@ -15,7 +15,12 @@ import { generateScenePlan } from "./planner";
 import { compileComposition as compileCompositionMjs } from "../../scripts/lib/composition-compiler.mjs";
 
 interface CompileFn {
-  (args: { repoRoot: string; plan: unknown; outDir: string }): {
+  (args: {
+    repoRoot: string;
+    plan: unknown;
+    outDir: string;
+    branding?: { senderName?: string; senderCompany?: string };
+  }): {
     outDir: string;
     scenes: number;
     durationS: number;
@@ -100,7 +105,15 @@ export async function buildCompositionV2(input: CompositionV2Input): Promise<San
   // process.cwd() is the function root which contains the deployed project
   // tree (including compositions/ after .vercelignore was updated).
   const repoRoot = process.cwd();
-  compileComposition({ repoRoot, plan, outDir });
+  compileComposition({
+    repoRoot,
+    plan,
+    outDir,
+    branding: {
+      senderName: input.senderName,
+      senderCompany: input.senderCompany,
+    },
+  });
 
   // Walk the compiled directory back into in-memory SandboxFile[].
   const files = await collectCompositionFiles(outDir);
