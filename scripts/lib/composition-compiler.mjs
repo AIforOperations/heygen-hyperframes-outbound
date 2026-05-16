@@ -186,6 +186,13 @@ export function compileComposition({ repoRoot, plan, outDir, branding, wordTimes
     path.join(repoRoot, "compositions/_shared/layout.css"),
     "utf8"
   );
+  // Motion library is a shared JS DSL inlined into every render so each
+  // scene's <script> can call window.LF.{fadeUp, scalePop, counter, ...}
+  // instead of hand-rolling GSAP. Keeps timings + easings consistent.
+  const motionJs = readFileSync(
+    path.join(repoRoot, "compositions/_shared/motion.js"),
+    "utf8"
+  );
   // Also copy them to _shared/ for direct browser inspection during dev
   for (const f of ["tokens.css", "layout.css"]) {
     copyFileSync(
@@ -223,6 +230,7 @@ export function compileComposition({ repoRoot, plan, outDir, branding, wordTimes
     crop,
     tokensCss,
     layoutCss,
+    motionJs,
     masterTimelineMounts,
     branding: senderBranding,
     captionWindows,
@@ -447,7 +455,7 @@ function buildChunk(buf) {
   };
 }
 
-function renderParent({ plan, sceneFragments, crop, tokensCss, layoutCss, masterTimelineMounts, branding, captionWindows }) {
+function renderParent({ plan, sceneFragments, crop, tokensCss, layoutCss, motionJs, masterTimelineMounts, branding, captionWindows }) {
   const duration = plan.duration.toFixed(3);
   const compId = plan.compositionId;
   return `<!DOCTYPE html>
@@ -457,6 +465,10 @@ function renderParent({ plan, sceneFragments, crop, tokensCss, layoutCss, master
   <title>${escapeHtml(compId)}</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+/* ===== inlined: _shared/motion.js ===== */
+${motionJs}
+  </script>
   <style>
 /* ===== inlined: _shared/tokens.css ===== */
 ${tokensCss}
