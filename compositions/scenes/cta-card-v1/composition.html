@@ -105,6 +105,31 @@
     color: var(--text-2);
     font-weight: var(--weight-regular);
   }
+  /* Demo cursor — positioned absolutely over the scene, hidden initially.
+     Animated by the script to travel toward the reply-row. */
+  #cta-card-v1 .demo-cursor {
+    position: absolute;
+    width: 36px;
+    height: 36px;
+    right: 60px;
+    top: 60px;
+    z-index: 20;
+    opacity: 0;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.22));
+    pointer-events: none;
+  }
+  /* Click ripple — radial circle that scales out when the cursor "clicks." */
+  #cta-card-v1 .demo-ripple {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 3px solid var(--accent);
+    z-index: 19;
+    opacity: 0;
+    pointer-events: none;
+    transform-origin: center center;
+  }
 </style>
 
 <div id="cta-card-v1" class="graphics-zone clip"
@@ -125,6 +150,15 @@
     {{#cta_subline}}
     <p class="subline" data-iv-el="subline">{{cta_subline}}</p>
     {{/cta_subline}}
+
+    <!-- Mouse cursor demo: travels from upper-right, lands on the reply
+         row, "clicks" with a ripple. Suggests the action without saying
+         "click here" — viewers recognize the cursor metaphor. -->
+    <svg class="demo-cursor" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#1f1a14" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"
+            d="M3 2 L3 18 L7 14 L9.8 20.2 L12.4 19 L9.6 12.8 L15 12.6 Z"/>
+    </svg>
+    <div class="demo-ripple" aria-hidden="true"></div>
 
     <div class="reply-row" data-iv-el="reply">
       <!-- Inline SVG return-arrow. Renders crisply at any zoom, no asset. -->
@@ -157,6 +191,54 @@
     LF.magneticOscillate(tl, root.querySelector(".reply-arrow"), {
       delay: 1.4, distance: 5, duration: 0.45, repeat: 3,
     });
+
+    // Demo cursor: fade in upper-right, travel toward reply-row, "click"
+    // with a ripple, then dissolve. Visual cue without saying "click here."
+    const cursor = root.querySelector(".demo-cursor");
+    const ripple = root.querySelector(".demo-ripple");
+    const replyRow = root.querySelector(".reply-row");
+    if (cursor && replyRow) {
+      // Position the cursor's resting place near the start of the reply row.
+      // Computed at animation time so it tracks the actual rendered position.
+      tl.set(cursor, { opacity: 0, x: 0, y: 0, scale: 1 }, 1.8);
+      tl.to(cursor, { opacity: 1, duration: 0.25 }, 1.85);
+      // Move the cursor along a curved-ish path toward the reply row's top-left
+      // (the reply-arrow icon area). We tween x/y on the cursor element with
+      // power3.out for a natural deceleration.
+      const rect = replyRow.getBoundingClientRect();
+      const rootRect = root.getBoundingClientRect();
+      const targetX = rect.left - rootRect.left - 950 + 20; // offset from cursor's CSS right: 60
+      const targetY = rect.top  - rootRect.top  - 60  + 18;
+      tl.to(cursor, {
+        x: targetX, y: targetY,
+        duration: 1.0, ease: "power3.out",
+      }, 1.95);
+      // Cursor "presses" — small scale down at the click moment
+      tl.to(cursor, {
+        scale: 0.85, duration: 0.12, ease: "power2.in",
+      }, 2.85);
+      tl.to(cursor, {
+        scale: 1, duration: 0.18, ease: "back.out(2)",
+      }, 2.97);
+      // Ripple expands outward at click point
+      if (ripple) {
+        tl.set(ripple, {
+          opacity: 0, scale: 0.4,
+          x: targetX + 950 - 30 + 12,
+          y: targetY + 60 + 12,
+        }, 2.85);
+        tl.to(ripple, {
+          opacity: 0.9, scale: 1, duration: 0.18, ease: "power2.out",
+        }, 2.88);
+        tl.to(ripple, {
+          opacity: 0, scale: 2.4, duration: 0.5, ease: "power2.out",
+        }, 3.04);
+      }
+      // Cursor dissolves after the click
+      tl.to(cursor, {
+        opacity: 0, duration: 0.4, ease: "power2.in",
+      }, 3.4);
+    }
 
     window.__timelines["cta-card-v1"] = tl;
   })();

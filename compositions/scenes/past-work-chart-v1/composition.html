@@ -127,6 +127,45 @@
     display: block;
     margin-top: 8px;
   }
+  /* Sparkline tooltip — positioned absolutely near the end-dot. */
+  #past-work-chart-v1 .spark-tooltip {
+    position: absolute;
+    top: calc(var(--gz-pad, 64px) + 290px);
+    right: calc(var(--gz-pad, 64px) + 6px);
+    padding: 8px 14px;
+    background: white;
+    border: 1px solid rgba(31, 26, 20, 0.10);
+    border-radius: 10px;
+    box-shadow: 0 6px 14px rgba(80, 30, 10, 0.10);
+    font-size: 18px;
+    font-weight: var(--weight-semibold);
+    color: var(--text);
+    font-feature-settings: "ss02", "cv11";
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    transform: translateY(8px);
+    z-index: 5;
+  }
+  #past-work-chart-v1 .spark-tooltip .tt-arrow {
+    color: var(--accent);
+    font-weight: var(--weight-black);
+    font-size: 20px;
+  }
+  /* Small triangular pointer beneath the tooltip pointing at the dot */
+  #past-work-chart-v1 .spark-tooltip::after {
+    content: "";
+    position: absolute;
+    bottom: -6px;
+    right: 14px;
+    width: 12px;
+    height: 12px;
+    background: white;
+    border-right: 1px solid rgba(31, 26, 20, 0.10);
+    border-bottom: 1px solid rgba(31, 26, 20, 0.10);
+    transform: rotate(45deg);
+  }
 </style>
 
 <div id="past-work-chart-v1" class="graphics-zone clip"
@@ -158,6 +197,14 @@
       <path class="spark-line" data-iv-el="spark-line" d="M0,75 L120,68 L240,62 L360,52 L480,46 L600,34 L720,28 L840,18 L1000,10"></path>
       <circle class="spark-dot" data-iv-el="spark-dot" cx="1000" cy="10" r="8"></circle>
     </svg>
+
+    <!-- Tooltip-style annotation that appears near the sparkline end-dot
+         after the number lands. Mimics the hover-tooltip pattern in real
+         dashboards — implies "this data is interactive." -->
+    <div class="spark-tooltip" data-iv-el="spark-tooltip">
+      <span class="tt-arrow">↗</span>
+      <span class="tt-text">{{result_prefix}}{{result_value}}{{result_suffix}} reached</span>
+    </div>
 
     <p class="claim" data-iv-el="claim">
       {{claim_headline}}
@@ -200,6 +247,12 @@
         { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, 1.6);
       // Glow pulse on the end-dot to anchor the eye on the final value
       LF.pulseGlow(tl, sparkDot, { delay: 2.0, scale: 1.4, duration: 0.5, repeat: 1 });
+    }
+
+    // Tooltip pops in next to the dot post-pulse — annotates the value
+    const tooltip = root.querySelector(".spark-tooltip");
+    if (tooltip) {
+      LF.scalePop(tl, tooltip, { delay: 2.3, from: 0.85, distance: 8, duration: 0.4 });
     }
 
     LF.blurIn(tl, root.querySelector(".claim"), { delay: 1.4, distance: 14, blur: 6, duration: 0.55 });
