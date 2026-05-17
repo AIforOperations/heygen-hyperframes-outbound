@@ -337,6 +337,9 @@ export default function Home() {
   // ---------- Email capture ----------
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
+  const [emailSubmitting, setEmailSubmitting] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailRepeat, setEmailRepeat] = useState(false);
 
   // ---------- Generate handler ----------
   //
@@ -471,10 +474,36 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inputValue, prompt, running]);
 
-  const submitEmail = (e: React.FormEvent) => {
+  const submitEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
-    setEmailSent(true);
+    const trimmed = email.trim();
+    if (!trimmed || emailSubmitting) return;
+    setEmailError(null);
+    setEmailRepeat(false);
+    setEmailSubmitting(true);
+    try {
+      const r = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed }),
+      });
+      const data = (await r.json().catch(() => ({}))) as {
+        ok?: boolean;
+        isNew?: boolean;
+        error?: string;
+      };
+      if (!r.ok || !data.ok) {
+        throw new Error(data.error || `Signup failed (${r.status})`);
+      }
+      setEmailSent(true);
+      setEmailRepeat(data.isNew === false);
+    } catch (err) {
+      setEmailError(
+        err instanceof Error ? err.message : "Couldn't sign you up."
+      );
+    } finally {
+      setEmailSubmitting(false);
+    }
   };
 
   const completedCount = stepStatuses.filter((s) => s === "done").length;
@@ -1164,33 +1193,57 @@ export default function Home() {
                 Want the video sent directly to your inbox?
               </h3>
             </div>
-            <form
-              onSubmit={submitEmail}
-              className="flex w-full max-w-md items-center gap-2 rounded-full border border-[var(--border-token-strong)] bg-[var(--surface)] p-1.5 md:w-auto"
-            >
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
-                className="w-full bg-transparent px-4 py-2 text-sm outline-none placeholder:text-muted/60 md:w-72"
-              />
-              <button
-                type="submit"
-                className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-xs font-medium text-white transition hover:opacity-90"
+            <div className="flex w-full flex-col items-end gap-2 md:w-auto">
+              <form
+                onSubmit={submitEmail}
+                className="flex w-full max-w-md items-center gap-2 rounded-full border border-[var(--border-token-strong)] bg-[var(--surface)] p-1.5 md:w-auto"
               >
-                {emailSent ? (
-                  <>
-                    <Check className="h-3.5 w-3.5" /> Got it
-                  </>
-                ) : (
-                  <>
-                    Get early access <ArrowRight className="h-3.5 w-3.5" />
-                  </>
-                )}
-              </button>
-            </form>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (emailError) setEmailError(null);
+                  }}
+                  placeholder="you@company.com"
+                  disabled={emailSubmitting || emailSent}
+                  className="w-full bg-transparent px-4 py-2 text-sm outline-none placeholder:text-muted/60 disabled:opacity-60 md:w-72"
+                />
+                <button
+                  type="submit"
+                  disabled={emailSubmitting || emailSent || !email.trim()}
+                  className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-xs font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {emailSubmitting ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 spin-ring" /> Saving
+                    </>
+                  ) : emailSent ? (
+                    <>
+                      <Check className="h-3.5 w-3.5" /> Got it
+                    </>
+                  ) : (
+                    <>
+                      Get early access <ArrowRight className="h-3.5 w-3.5" />
+                    </>
+                  )}
+                </button>
+              </form>
+              {emailSent && (
+                <div className="px-3 text-[0.72rem] text-muted">
+                  {emailRepeat
+                    ? "You're already on the list — we'll be in touch."
+                    : "You're on the list. Watch your inbox."}
+                </div>
+              )}
+              {emailError && (
+                <div className="flex items-start gap-1.5 px-3 text-[0.72rem] text-[var(--primary)]">
+                  <AlertCircle className="mt-px h-3 w-3 shrink-0" />
+                  <span>{emailError}</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </section>
